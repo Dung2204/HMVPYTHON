@@ -450,7 +450,7 @@ def run_ClassificationMinst_app():
                         # Lưu Confusion Matrix vào file ảnh
                     confusion_matrix_path = "confusion_matrix.png"
                     fig.savefig(confusion_matrix_path)
-                    # mlflow.log_artifact(confusion_matrix_path)  # Log ảnh vào MLflow
+                    mlflow.log_artifact(confusion_matrix_path)  # Log ảnh vào MLflow
                     
                 
                 st.markdown(
