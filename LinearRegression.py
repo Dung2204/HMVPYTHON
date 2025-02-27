@@ -675,9 +675,10 @@ def run_LinearRegression_app():
             st.warning("Vui lòng huấn luyện mô hình trước.")
 
     # ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
-       # ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
-    with tab_mlflow:
-        st.header("Thông tin Huấn luyện & MLflow UI")
+    # ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
+with tab_mlflow:
+    st.header("Thông tin Huấn luyện & MLflow UI")
+    try:
         # Khởi tạo MLflow Client
         client = MlflowClient()
         experiment_name = "Model_Training_Experiment"
@@ -696,10 +697,10 @@ def run_LinearRegression_app():
         if runs:
             run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}" for run in runs}
             selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
-                                                    options=list(run_options.keys()), 
-                                                    format_func=lambda x: run_options[x])
+                                                      options=list(run_options.keys()), 
+                                                      format_func=lambda x: run_options[x])
             new_run_name = st.text_input("Nhập tên mới cho Run:", 
-                                        value=run_options[selected_run_id_for_rename].split(" - ")[0])
+                                         value=run_options[selected_run_id_for_rename].split(" - ")[0])
 
             if st.button("Cập nhật tên Run"):
                 if new_run_name.strip():
@@ -729,8 +730,8 @@ def run_LinearRegression_app():
         st.subheader("Danh sách các Run đã log")
         if runs:
             selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
-                                        options=list(run_options.keys()), 
-                                        format_func=lambda x: run_options[x])
+                                          options=list(run_options.keys()), 
+                                          format_func=lambda x: run_options[x])
 
             # 4) Hiển thị thông tin chi tiết của Run được chọn
             selected_run = client.get_run(selected_run_id)
@@ -759,6 +760,8 @@ def run_LinearRegression_app():
                 st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
         else:
             st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
+    except Exception as e:
+        st.error(f"Không thể kết nối với MLflow: {e}")
 
 if __name__ == "__main__":
-    run_LinearRegression_app()
+    run_LinearRegression_app()  # Hoặc run_titanic_app() nếu bạn muốn chạy một ứng dụng khác
