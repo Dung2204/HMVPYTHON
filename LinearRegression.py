@@ -582,7 +582,7 @@ def run_LinearRegression_app():
                             st.session_state["params"] = params
                             st.session_state["model"] = model
                             st.session_state["models_trained"] = True
-                        mlflow.end_run()
+                        
                         # Hiển thị kết quả
                         results_df = pd.DataFrame({
                         "Metric": ["Cross Validation Scores (R²)", "Mean CV Score (R²)", "Validation MSE", "Validation R²", "Validation Accuracy", "Test MSE", "Test R²", "Test Accuracy"],
