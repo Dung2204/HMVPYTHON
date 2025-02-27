@@ -678,9 +678,22 @@ def run_LinearRegression_app():
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
             client = MlflowClient()
-            experiment_id = "1"  # Thay bằng ID thí nghiệm thực tế của bạn
+            experiment_name = "MyExperiment"
+    
+            # Kiểm tra nếu experiment đã tồn tại
+            experiment = client.get_experiment_by_name(experiment_name)
+            if experiment is None:
+                experiment_id = client.create_experiment(experiment_name)
+                st.success(f"Experiment mới được tạo với ID: {experiment_id}")
+            else:
+                experiment_id = experiment.experiment_id
+                st.info(f"Đang sử dụng experiment ID: {experiment_id}")
+    
+            mlflow.set_experiment(experiment_name)
+    
+            # Truy vấn các run trong experiment
             runs = client.search_runs(experiment_ids=[experiment_id])
-            
+    
             # 1) Chọn và đổi tên Run Name
             st.subheader("Đổi tên Run")
             if runs:
@@ -699,7 +712,7 @@ def run_LinearRegression_app():
                         st.warning("Vui lòng nhập tên mới cho Run.")
             else:
                 st.info("Chưa có Run nào được log.")
-
+    
             # 2) Xóa Run
             st.subheader("Danh sách Run")
             if runs:
@@ -709,27 +722,25 @@ def run_LinearRegression_app():
                 if st.button("Xóa Run", key="delete_run"):
                     client.delete_run(selected_run_id_to_delete)
                     st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
-                    # Cập nhật lại danh sách runs sau khi xóa
-                    runs = client.search_runs(experiment_ids=[experiment_id])
-                    st.experimental_rerun()  # Tự động làm mới giao diện để cập nhật danh sách
+                    st.experimental_rerun()  # Tự động làm mới giao diện
             else:
                 st.info("Chưa có Run nào để xóa.")
-
+    
             # 3) Danh sách các thí nghiệm
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
                                                options=list(run_options.keys()), 
                                                format_func=lambda x: run_options[x])
-                
+    
                 # 4) Hiển thị thông tin chi tiết của Run được chọn
                 selected_run = client.get_run(selected_run_id)
                 st.write(f"**Run ID:** {selected_run_id}")
                 st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
-                
+    
                 st.markdown("### Tham số đã log")
                 st.json(selected_run.data.params)
-                
+    
                 st.markdown("### Chỉ số đã log")
                 metrics = {
                     "Mean CV Score (R²)": selected_run.data.metrics.get("mean_cv_score", "N/A"),
@@ -741,16 +752,18 @@ def run_LinearRegression_app():
                     "Test Accuracy": selected_run.data.metrics.get("test_accuracy", "N/A")
                 }
                 st.json(metrics)
-
+    
                 # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
-                mlflow_url = f"https://dagshub.com/Dung2204/HMVPython.mlflow"
+                mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
                 if st.button("Mở MLflow UI"):
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
                 st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
+    
         except Exception as e:
             st.error(f"Không thể kết nối với MLflow: {e}")
+
 
 if __name__ == "__main__":
     run_titanic_app()
