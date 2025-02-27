@@ -426,7 +426,8 @@ def run_ClassificationMinst_app():
                 else:
                     st.error("🚨 Dữ liệu huấn luyện không tìm thấy. Hãy huấn luyện mô hình trước khi dự đoán.")
 
-
+if __name__ == "__main__":
+    run_ClassificationMinst_app()
     # st.write(f"MLflow Tracking URI: {mlflow.get_tracking_uri()}")
     # print("🎯 Kiểm tra trên DagsHub: https://dagshub.com/Dung2204/MINST.mlflow/")
     # # # cd "C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App"
