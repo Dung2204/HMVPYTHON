@@ -9,12 +9,10 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import SGDRegressor,LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
-
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 import joblib
 import mlflow
-import mlflow.sklearn
-from mlflow.tracking import MlflowClient
+# from mlflow.tracking import MlflowClient
 
 def run_LinearRegression_app():
 
