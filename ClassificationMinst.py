@@ -27,7 +27,7 @@ def run_ClassificationMinst_app():
     def get_random_indices(num_images, total_images):
         return np.random.randint(0, total_images, size=num_images)
 
-    # Cấu hình Streamlit
+    # Cấu hình Streamlit    
     # st.set_page_config(page_title="Phân loại ảnh", layout="wide")
     # Định nghĩa hàm để đọc file .idx
     def load_mnist_images(filename):
@@ -138,17 +138,10 @@ def run_ClassificationMinst_app():
         st.write("🔍 Hình dạng tập huấn luyện:", train_images.shape)
         st.write("🔍 Hình dạng tập kiểm tra:", test_images.shape)
 
-        st.subheader("📌***6. Kiểm tra xem có giá trị không phù hợp trong phạm vi không***")
-
-        # Kiểm tra xem có giá trị pixel nào ngoài phạm vi 0-255 không
-        if (train_images.min() < 0) or (train_images.max() > 255):
-            st.error("⚠️ Cảnh báo: Có giá trị pixel ngoài phạm vi 0-255!")
-        else:
-            st.success("✅ Dữ liệu pixel hợp lệ (0 - 255).")
 
 
 
-        st.subheader("📌***7. Chuẩn hóa dữ liệu (đưa giá trị pixel về khoảng 0-1)***")
+        st.subheader("📌***6. Chuẩn hóa dữ liệu (đưa giá trị pixel về khoảng 0-1)***")
         # Chuẩn hóa dữ liệu
         train_images = train_images.astype("float32") / 255.0
         test_images = test_images.astype("float32") / 255.0
@@ -193,6 +186,11 @@ def run_ClassificationMinst_app():
             - Phần lớn pixel là **đen** hoặc **trắng**, ít điểm ảnh có sắc độ trung bình (xám).  
         """
         )
+        if "train_images" not in st.session_state:
+            st.session_state.train_images = train_images
+            st.session_state.train_labels = train_labels
+            st.session_state.test_images = test_images
+            st.session_state.test_labels = test_labels
 
 
     # with st.expander("🖼️ XỬ LÝ DỮ LIỆU", expanded=True):
@@ -201,7 +199,13 @@ def run_ClassificationMinst_app():
         st.header("📌 8. Xử lý dữ liệu và chuẩn bị huấn luyện")
 
         # Kiểm tra nếu dữ liệu đã được load
-        if 'train_images' in globals() and 'train_labels' in globals() and 'test_images' in globals():
+        if "train_images" in st.session_state:
+        # Lấy dữ liệu từ session_state
+            train_images = st.session_state.train_images
+            train_labels = st.session_state.train_labels
+            test_images = st.session_state.test_images
+            test_labels = st.session_state.test_labels
+
             # Chuyển đổi dữ liệu thành vector 1 chiều
             X_train = train_images.reshape(train_images.shape[0], -1)
             X_test = test_images.reshape(test_images.shape[0], -1)
@@ -428,3 +432,4 @@ if __name__ == "__main__":
     # st.write(f"MLflow Tracking URI: {mlflow.get_tracking_uri()}")
     # print("🎯 Kiểm tra trên DagsHub: https://dagshub.com/Dung2204/MINST.mlflow/")
     # # # cd "C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App"
+    # ClassificationMinst.py
