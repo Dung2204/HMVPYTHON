@@ -80,7 +80,6 @@ def run_ClassificationMinst_app():
     ])
     # tab_info, tab_load, tab_preprocess, tab_split,  tab_demo, tab_log_info = tabs
     tab_info, tab_load, tab_preprocess, tab_split,  tab_demo = tabs
-    st.header("Thông tin dữ liệu")
 
     # with st.expander("🖼️ Dữ liệu ban đầu", expanded=True):
     with tab_info:
