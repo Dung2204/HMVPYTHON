@@ -18,19 +18,17 @@ from mlflow.tracking import MlflowClient
 
 def run_LinearRegression_app():
 
-    # # Thiết lập MLflow
-    # mlflow.set_tracking_uri(mlflow_tracking_uri)
-    # mlflow_tracking_uri = st.secrets["MLFLOW_TRACKING_URI"]
-    # mlflow_username = st.secrets["MLFLOW_TRACKING_USERNAME"]
-    # mlflow_password = st.secrets["MLFLOW_TRACKING_PASSWORD"]
-    try:
-        os.environ["MLFLOW_TRACKING_USERNAME"] = st.secrets["mlflow"]["MLFLOW_TRACKING_USERNAME"]
-        os.environ["MLFLOW_TRACKING_PASSWORD"] = st.secrets["mlflow"]["MLFLOW_TRACKING_PASSWORD"]
-        mlflow.set_tracking_uri(st.secrets["mlflow"]["MLFLOW_TRACKING_URI"])
-        mlflow.set_experiment("Titanic")
-    except KeyError as e:
-        st.error(f"Lỗi: Không tìm thấy khóa {e} trong st.secrets. Vui lòng cấu hình secrets trong Streamlit.")
-        st.stop()
+    mlflow_tracking_uri = st.secrets["MLFLOW_TRACKING_URI"]
+    mlflow_username = st.secrets["MLFLOW_TRACKING_USERNAME"]
+    mlflow_password = st.secrets["MLFLOW_TRACKING_PASSWORD"]
+    
+    # Thiết lập biến môi trường
+    os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+    os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
+    
+    # Thiết lập MLflow (Đặt sau khi mlflow_tracking_uri đã có giá trị)
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
 
     # # Thiết lập biến môi trường
     # os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
