@@ -35,8 +35,8 @@ def run_LinearRegression_app():
     # os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
     # os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
 
-    # Thiết lập MLflow
-    mlflow.set_tracking_uri(mlflow_tracking_uri)
+    # # Thiết lập MLflow
+    # mlflow.set_tracking_uri(mlflow_tracking_uri)
 
 
     # Khởi tạo session_state nếu chưa có
