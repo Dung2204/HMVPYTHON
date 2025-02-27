@@ -12,7 +12,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 import joblib
 import mlflow
-# from mlflow.tracking import MlflowClient
+from mlflow.tracking import MlflowClient
 
 def run_LinearRegression_app():
 
