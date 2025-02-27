@@ -746,7 +746,7 @@ def run_LinearRegression_app():
 
                 # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
-                mlflow_url = f"https://dagshub.com/huykibo/streamlit_mlflow.mlflow"
+                mlflow_url = f"https://dagshub.com/Dung2204/HMVPython.mlflow"
                 if st.button("Mở MLflow UI"):
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
