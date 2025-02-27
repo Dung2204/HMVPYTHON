@@ -8,3 +8,4 @@ opencv-python-headless
 pillow
 altair
 mlflow
+streamlit-drawable-canvas
