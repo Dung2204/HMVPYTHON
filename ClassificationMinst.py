@@ -97,10 +97,10 @@ def run_ClassificationMinst_app():
                 Các nhà nghiên cứu **Yann LeCun, Corinna Cortes, và Christopher Burges** đã xử lý, chuẩn hóa và chuyển đổi bộ dữ liệu này thành **MNIST** để dễ dàng sử dụng hơn cho các bài toán nhận dạng chữ số viết tay.
                 '''
             )
-            image = Image.open(r'C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image.png')
+            # image = Image.open(r'C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image.png')
 
-            # Gắn ảnh vào Streamlit và chỉnh kích thước
-            st.image(image, caption='Mô tả ảnh', width=600) 
+            # # Gắn ảnh vào Streamlit và chỉnh kích thước
+            # st.image(image, caption='Mô tả ảnh', width=600) 
             # Đặc điểm của bộ dữ liệu
         with st.expander("**Đặc điểm của bộ dữ liệu**", expanded=True):
             st.markdown(
