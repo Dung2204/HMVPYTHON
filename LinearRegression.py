@@ -18,19 +18,19 @@ from mlflow.tracking import MlflowClient
 
 def run_LinearRegression_app():
 
-    # # Thiết lập MLflow
-    # mlflow.set_tracking_uri(mlflow_tracking_uri)
-    # mlflow_tracking_uri = st.secrets["MLFLOW_TRACKING_URI"]
-    # mlflow_username = st.secrets["MLFLOW_TRACKING_USERNAME"]
-    # mlflow_password = st.secrets["MLFLOW_TRACKING_PASSWORD"]
+    # Thiết lập MLflow
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
+    mlflow_tracking_uri = st.secrets["MLFLOW_TRACKING_URI"]
+    mlflow_username = st.secrets["MLFLOW_TRACKING_USERNAME"]
+    mlflow_password = st.secrets["MLFLOW_TRACKING_PASSWORD"]
 
-    # # Thiết lập biến môi trường
-    # os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
-    # os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
-    # os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
+    # Thiết lập biến môi trường
+    os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+    os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
 
-    # # Thiết lập MLflow
-    # mlflow.set_tracking_uri(mlflow_tracking_uri)
+    # Thiết lập MLflow
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
 
 
     # Khởi tạo session_state nếu chưa có
@@ -753,7 +753,7 @@ def run_LinearRegression_app():
 
                 # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
-                mlflow_url = f"https://dagshub.com/huykibo/streamlit_mlflow.mlflow"
+                mlflow_url = f"https://dagshub.com/Dung2204/HMVPython.mlflow"
                 if st.button("Mở MLflow UI"):
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
