@@ -404,51 +404,52 @@ def run_LinearRegression_app():
                     st.error("Không tìm thấy cột mục tiêu 'Survived'.")
                 else:
                     st.write("**Nhập tỷ lệ chia tập dữ liệu:**")
-                    test_pct = st.slider("**Test Set** (%)", 0, 50, 15)
-                    valid_pct = st.slider("**Validation Set** (%)", 0, 50, 15)
-                    train_pct = 100 - (test_pct + valid_pct)
-                    total = test_pct + valid_pct + train_pct
-                    st.markdown(f"""
-                    Tỷ lệ phân chia bao gồm:
-                    - **Train:** {train_pct}%  
-                    - **Test:** {test_pct}%  
-                    - **Validation:** {valid_pct}%  
-                    """)
-                    if total != 100:
-                        st.warning("Tổng các tỉ lệ phải bằng 100%! Vui lòng điều chỉnh lại các giá trị.")
-                    else:
-                        if train_pct < 30:
-                            st.warning("Tỉ lệ tập Train quá thấp (<30%).")
-                        if test_pct < 5:
-                            st.warning("Tỉ lệ tập Test quá thấp (<5%).")
-                        if valid_pct < 5:
-                            st.warning("Tỉ lệ tập Validation quá thấp (<5%).")
-                        X = df.drop(columns=["Survived"])
-                        y = df["Survived"]  
-                        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_pct/100, random_state=42)
-                        valid_size = valid_pct / (valid_pct + train_pct) if (valid_pct + train_pct) > 0 else 0
-                        X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=valid_size, random_state=42)
+                    with mlflow.start_run():
+                        test_pct = st.slider("**Test Set** (%)", 0, 50, 15)
+                        valid_pct = st.slider("**Validation Set** (%)", 0, 50, 15)
+                        train_pct = 100 - (test_pct + valid_pct)
+                        total = test_pct + valid_pct + train_pct
                         st.markdown(f"""
-                        Số lượng mẫu sau khi chia:
-                        - **Train:** {X_train.shape[0]} mẫu  
-                        - **Validation:** {X_val.shape[0]} mẫu  
-                        - **Test:** {X_test.shape[0]} mẫu  
+                        Tỷ lệ phân chia bao gồm:
+                        - **Train:** {train_pct}%  
+                        - **Test:** {test_pct}%  
+                        - **Validation:** {valid_pct}%  
                         """)
-
-                        min_samples = 10
-                        if X_train.shape[0] < min_samples:
-                            st.warning("Số mẫu tập Train quá ít.")
-                        if X_val.shape[0] < min_samples:
-                            st.warning("Số mẫu tập Validation quá ít.")
-                        if X_test.shape[0] < min_samples:
-                            st.warning("Số mẫu tập Test quá ít.")
-                        st.session_state.X_train = X_train
-                        st.session_state.y_train = y_train
-                        st.session_state.X_val = X_val
-                        st.session_state.y_val = y_val
-                        st.session_state.X_test = X_test
-                        st.session_state.y_test = y_test
-                        st.session_state.data_split = True
+                        if total != 100:
+                            st.warning("Tổng các tỉ lệ phải bằng 100%! Vui lòng điều chỉnh lại các giá trị.")
+                        else:
+                            if train_pct < 30:
+                                st.warning("Tỉ lệ tập Train quá thấp (<30%).")
+                            if test_pct < 5:
+                                st.warning("Tỉ lệ tập Test quá thấp (<5%).")
+                            if valid_pct < 5:
+                                st.warning("Tỉ lệ tập Validation quá thấp (<5%).")
+                            X = df.drop(columns=["Survived"])
+                            y = df["Survived"]  
+                            X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_pct/100, random_state=42)
+                            valid_size = valid_pct / (valid_pct + train_pct) if (valid_pct + train_pct) > 0 else 0
+                            X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=valid_size, random_state=42)
+                            st.markdown(f"""
+                            Số lượng mẫu sau khi chia:
+                            - **Train:** {X_train.shape[0]} mẫu  
+                            - **Validation:** {X_val.shape[0]} mẫu  
+                            - **Test:** {X_test.shape[0]} mẫu  
+                            """)
+                    mlflow.end_run()
+                    min_samples = 10
+                    if X_train.shape[0] < min_samples:
+                        st.warning("Số mẫu tập Train quá ít.")
+                    if X_val.shape[0] < min_samples:
+                        st.warning("Số mẫu tập Validation quá ít.")
+                    if X_test.shape[0] < min_samples:
+                        st.warning("Số mẫu tập Test quá ít.")
+                    st.session_state.X_train = X_train
+                    st.session_state.y_train = y_train
+                    st.session_state.X_val = X_val
+                    st.session_state.y_val = y_val
+                    st.session_state.X_test = X_test
+                    st.session_state.y_test = y_test
+                    st.session_state.data_split = True
             else:
                 st.warning("Vui lòng xử lý dữ liệu trước.")
 
@@ -513,6 +514,7 @@ def run_LinearRegression_app():
                                 params["eta0"] = eta0
                             else:
                                 params["eta0"] = "N/A"
+
                             if model_choice_to_train == "Hồi quy Đa thức":
                                 params["poly_degree"] = poly_degree
 
@@ -576,7 +578,7 @@ def run_LinearRegression_app():
                             st.session_state["params"] = params
                             st.session_state["model"] = model
                             st.session_state["models_trained"] = True
-
+                        mlflow.end_run()
                         # Hiển thị kết quả
                         results_df = pd.DataFrame({
                         "Metric": ["Cross Validation Scores (R²)", "Mean CV Score (R²)", "Validation MSE", "Validation R²", "Validation Accuracy", "Test MSE", "Test R²", "Test Accuracy"],
@@ -591,7 +593,6 @@ def run_LinearRegression_app():
                             f"{accuracy_test:.2%}"
                         ]
                         })
-
                         # Hiển thị bảng
                         st.markdown("### 📊 Kết quả đánh giá mô hình")
                         st.table(results_df)
@@ -607,22 +608,7 @@ def run_LinearRegression_app():
                         - **R² (R-squared):** Đo lường độ phù hợp của mô hình, gần 1 là tốt.  
                         - **Accuracy (ngưỡng 0.5):** Tỷ lệ dự đoán đúng khi áp dụng ngưỡng 0.5.  
                         """)
-                        # st.markdown("### Biểu đồ Actual vs Predicted (Validation)")
-                        # fig, ax = plt.subplots()
-                        # sns.scatterplot(x=y_val, y=y_pred_val, ax=ax)
-                        # ax.plot([0, 1], [0, 1], 'r--')
-                        # ax.set_xlabel("Thực tế")
-                        # ax.set_ylabel("Dự đoán")
-                        # ax.set_title(f"{model_choice_to_train} (Validation)")
-                        # st.pyplot(fig)
-                        # st.markdown("### Biểu đồ Actual vs Predicted (Test)")
-                        # fig2, ax2 = plt.subplots()
-                        # sns.scatterplot(x=y_test, y=y_pred_test, ax=ax2)
-                        # ax2.plot([0, 1], [0, 1], 'r--')
-                        # ax2.set_xlabel("Thực tế")
-                        # ax2.set_ylabel("Dự đoán")
-                        # ax2.set_title(f"{model_choice_to_train} (Test)")
-                        # st.pyplot(fig2)
+                        
                         metrics = ["Mean CV Score (R²)", "Validation MSE", "Validation R²", "Validation Accuracy", "Test MSE", "Test R²", "Test Accuracy"]
                         values = [np.mean(cv_scores), mse_val, r2_val, accuracy_val, mse_test, r2_test, accuracy_test]
 
