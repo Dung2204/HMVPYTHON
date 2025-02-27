@@ -28,7 +28,7 @@ def run_ClassificationMinst_app():
         return np.random.randint(0, total_images, size=num_images)
 
     # Cấu hình Streamlit
-    st.set_page_config(page_title="Phân loại ảnh", layout="wide")
+    # st.set_page_config(page_title="Phân loại ảnh", layout="wide")
     # Định nghĩa hàm để đọc file .idx
     def load_mnist_images(filename):
         with open(filename, 'rb') as f:
