@@ -6,9 +6,10 @@ from scipy.stats import zscore
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.linear_model import SGDRegressor
+from sklearn.linear_model import SGDRegressor,LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
+
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 import joblib
 import mlflow
@@ -104,11 +105,12 @@ def run_LinearRegression_app():
     # Tạo các tab
     tabs = st.tabs([
         "Phân tích dữ liệu",
+        "Thông tin",
         "Huấn luyện mô hình",
         "Dự đoán",
         "Thông tin huấn luyện & MLflow UI"
     ])
-    tab_analysis, tab_train, tab_predict, tab_mlflow = tabs
+    tab_analysis,tab_note, tab_train, tab_predict, tab_mlflow = tabs
 
     with tab_analysis:
         st.header("Phân tích và xử lý dữ liệu")
@@ -209,8 +211,188 @@ def run_LinearRegression_app():
             else:
                 st.warning("Vui lòng tải dữ liệu trước.")
 
-    
+    with tab_note:
+    # Tiêu đề ứng dụng
+        option = st.selectbox("Chọn loại hồi quy ", ["Hồi quy tuyến tính", "Hồi quy tuyến tính bội", "Hồi quy đa thức"])
+        # Giải thích lý thuyết bằng st.markdown()
+        if option == "Hồi quy tuyến tính":
+            st.header(" Hồi quy tuyến tính (Linear Regression)")
+            
+            st.markdown("""
+            ### 📌 **Lý thuyết**
+            - **Hồi quy tuyến tính (Linear Regression)**: là một thuật toán học máy có giám sát được sử dụng để dự đoán giá trị của một biến phụ thuộc (Y) dựa vào một hoặc nhiều biến độc lập (X).
+            - **Công thức tổng quát**:
+            $$
+            Y = w_0 + w_1X 
+            $$
+            - Trong đó:
+            - \\( Y \\): Biến phụ thuộc (giá trị cần dự đoán).
+            - \\( X \\): Biến độc lập.
+            - \\( w_0, w_1 \\): Hệ số hồi quy.
 
+            """)
+
+            np.random.seed(42)
+            X = np.linspace(1, 10, 20).reshape(-1, 1)  # Biến X (dữ liệu đầu vào)
+            Y = 3 + 2 * X.flatten() + np.random.randn(20) * 2  # Biến Y có nhiễu
+
+            df = pd.DataFrame({"X": X.flatten(), "Y": Y})
+
+            # Train mô hình hồi quy tuyến tính đơn
+            model = LinearRegression()
+            model.fit(X, Y)
+            w0, w1 = model.intercept_, model.coef_[0]
+
+            # Hiển thị công thức mô hình
+            st.markdown(f"""
+            ### 📌 **Biểu đồ tham khảo:**
+            $$
+            $$
+            """)
+
+            # --- VẼ BIỂU ĐỒ CHÍNH XÁC ---
+            fig, ax = plt.subplots(figsize=(8, 6))
+
+            # Vẽ dữ liệu thực tế (điểm xanh)
+            ax.scatter(X, Y, color="blue", label="Dữ liệu thực tế")
+
+            # Vẽ đường hồi quy
+            X_range = np.linspace(min(X), max(X), 100).reshape(-1, 1)
+            Y_pred = model.predict(X_range)
+            ax.plot(X_range, Y_pred, color="red", linewidth=2, label="Đường hồi quy")
+
+            # Cài đặt trục
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y")
+            ax.set_title("Mô hình Hồi quy tuyến tính đơn")
+            ax.legend()
+
+            # Hiển thị biểu đồ trong Streamlit
+            st.pyplot(fig)
+            
+        elif option == "Hồi quy tuyến tính bội":
+            st.header(" Hồi quy tuyến tính bội (Multiple Linear Regression)")
+
+            st.markdown("""
+            ### 📌 **Lý thuyết**
+            - **Hồi quy tuyến tính bội (Multiple Linear Regression)**: là một mở rộng của hồi quy tuyến tính đơn, trong đó có nhiều biến độc lập (X1, X2, ..., Xn) ảnh hưởng đến biến phụ thuộc (Y).
+            - **Công thức tổng quát**:
+            $$
+            Y = w_0 + w_1X_1 + w_2X_2 + ... + w_nX_n 
+            $$
+            - Trong đó:
+            - \\( X_1, X_2, ..., X_n \\) là các biến độc lập.
+            - \\( w_0, w_1, ..., w_n \\) là các hệ số hồi quy.
+            """)
+
+            
+            np.random.seed(42)
+            X1 = np.linspace(1, 10, 20)  # Biến X1
+            X2 = np.random.uniform(1, 5, 20)  # Biến X2
+            Y = 3 + 1.5 * X1 + 2 * X2 + np.random.randn(20) * 2  # Tạo dữ liệu với nhiễu
+
+            df = pd.DataFrame({"X1": X1, "X2": X2, "Y": Y})
+
+            # Train mô hình hồi quy tuyến tính bội
+            model = LinearRegression()
+            model.fit(df[["X1", "X2"]], df["Y"])
+            w0, w1, w2 = model.intercept_, model.coef_[0], model.coef_[1]
+
+            # Hiển thị công thức mô hình
+            st.markdown(f"""
+            ### 📌 **Biểu đồ tham khảo:**
+            $$
+            $$
+            """)
+
+            # --- VẼ BIỂU ĐỒ 3D CHÍNH XÁC ---
+            fig = plt.figure(figsize=(8, 6))
+            ax = fig.add_subplot(111, projection="3d")
+
+            # Vẽ điểm dữ liệu thực tế
+            ax.scatter(df["X1"], df["X2"], df["Y"], color="blue", label="Dữ liệu thực tế")
+
+            # Vẽ mặt phẳng hồi quy
+            X1_range = np.linspace(min(X1), max(X1), 20)
+            X2_range = np.linspace(min(X2), max(X2), 20)
+            X1_grid, X2_grid = np.meshgrid(X1_range, X2_range)
+            Y_pred = w0 + w1 * X1_grid + w2 * X2_grid  # Mặt phẳng hồi quy chính xác
+
+            ax.plot_surface(X1_grid, X2_grid, Y_pred, color="red", alpha=0.5, edgecolor='k')
+
+            # Cài đặt trục
+            ax.set_xlabel("X1")
+            ax.set_ylabel("X2")
+            ax.set_zlabel("Y")
+            ax.set_title("Mô hình Hồi quy tuyến tính bội")
+            ax.legend()
+
+            # Hiển thị biểu đồ trong Streamlit
+            st.pyplot(fig)
+
+        elif option == "Hồi quy đa thức":
+            st.header("Hồi quy đa thức (Polynomial Regression)")
+
+            st.markdown("""
+            ### 📌 **Lý thuyết**
+            - Hồi quy đa thức (Polynomial Regression) là một mở rộng của hồi quy tuyến tính, trong đó mối quan hệ giữa biến độc lập \(X\) và biến phụ thuộc \(Y\) không phải là tuyến tính mà là hàm bậc cao của \(X\).
+            - Công thức tổng quát:
+            $$
+            Y = w_0 + w_1X + w_2X^2 + ... + w_nX^n + \epsilon
+            $$
+            - Trong đó:
+            - \\( X \\) là biến độc lập.
+            - \\( w_0, w_1, ..., w_n \\) là các hệ số hồi quy.
+            - \\( X^2, X^3, ..., X^n \\) là các bậc cao hơn của biến \\( X \\).
+            
+            """)
+
+            # --- Sinh dữ liệu mẫu ---
+            np.random.seed(42)
+            X = np.linspace(1, 10, 20).reshape(-1, 1)
+            Y = 3 + 2 * X.flatten() + 1.2 * X.flatten()**2 + np.random.randn(20) * 5  # Hàm bậc 2 có nhiễu
+
+            df = pd.DataFrame({"X": X.flatten(), "Y": Y})
+
+            # Biến đổi X thành dạng đa thức bậc 2
+            poly = PolynomialFeatures(degree=2)  # Chọn hồi quy bậc 2
+            X_poly = poly.fit_transform(X)
+
+            # Train mô hình hồi quy đa thức
+            model = LinearRegression()
+            model.fit(X_poly, Y)
+            w0, w1, w2 = model.intercept_, model.coef_[1], model.coef_[2]
+
+            # Hiển thị công thức mô hình
+            st.markdown(f"""
+            ### 📌 **Công thức mô hình tìm được (bậc 2):**
+            $$  
+            $$
+            """)
+
+            # --- VẼ BIỂU ĐỒ CHÍNH XÁC ---
+            fig, ax = plt.subplots(figsize=(8, 6))
+
+            # Vẽ dữ liệu thực tế
+            ax.scatter(X, Y, color="blue", label="Dữ liệu thực tế")
+
+            # Vẽ đường hồi quy đa thức
+            X_range = np.linspace(min(X), max(X), 100).reshape(-1, 1)
+            X_range_poly = poly.transform(X_range)
+            Y_pred = model.predict(X_range_poly)
+            ax.plot(X_range, Y_pred, color="red", linewidth=2, label="Đường hồi quy đa thức")
+
+            # Cài đặt trục
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y")
+            ax.set_title("Mô hình Hồi quy đa thức bậc 2")
+            ax.legend()
+
+            # Hiển thị biểu đồ trong Streamlit
+            st.pyplot(fig)
+        
+
+        st.markdown("---")
 
          # ---------------- Huấn luyện & Kiểm thử mô hình ----------------
     with tab_train:
