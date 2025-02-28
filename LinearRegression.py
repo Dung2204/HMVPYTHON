@@ -766,4 +766,4 @@ def run_LinearRegression_app():
 
 
 if __name__ == "__main__":
-    run_titanic_app()
+    run_LinearRegression_app()
