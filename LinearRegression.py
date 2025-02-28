@@ -108,7 +108,7 @@ def run_LinearRegression_app():
 
     # Tạo các tab
     tabs = st.tabs([
-        "Phân tích dữ liệu",
+        "Tập dữ liệu",
         "Thông tin",
         "Huấn luyện mô hình",
         "Dự đoán",
