@@ -203,9 +203,14 @@ def run_LinearRegression_app():
                 if norm_method == "Min-Max Scaling":
                     from sklearn.preprocessing import MinMaxScaler
                     scaler = MinMaxScaler()
+                    if st.toggle("Hiển thị thông tin MinMaxScaler"):
+                        st.write("Chuẩn hóa dữ liệu về khoảng [0,1] hoặc [-1,1], giúp duy trì tỷ lệ giữa các giá trị gốc.")
+
                 else:
                     from sklearn.preprocessing import StandardScaler
                     scaler = StandardScaler()
+                    if st.toggle("Hiển thị thông tin Standard Scaling"):
+                        st.write("Biến đổi dữ liệu về trung bình 0 và độ lệch chuẩn 1, phù hợp với dữ liệu có phân phối chuẩn.")
                 df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
                 # st.write(f"Đã chuẩn hóa các cột số: {', '.join(numeric_cols)}")
                 st.success("Dữ liệu đã được xử lý!")
