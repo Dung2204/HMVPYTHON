@@ -67,7 +67,7 @@ def run_LinearRegression_app():
     if "run_name" not in st.session_state:
         st.session_state["run_name"] = None
 
-    st.title("🚢 Dự đoán sống sót trên Titanic")
+    st.title("Linear regression Titanic")
 
     # # CSS cho tooltip (hiển thị bên trái)
     # st.markdown("""
