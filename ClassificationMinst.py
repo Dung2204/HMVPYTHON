@@ -75,7 +75,7 @@ def run_ClassificationMinst_app():
     # Giao diện Streamlit
     st.title("📸 Phân loại ảnh MNIST với Streamlit")
     tabs = st.tabs([
-        "Thông tin dữ liệu",
+        ""Tập dữ liệu",
         "Xử lí dữ liệu",
         "Thông tin",
         "Huấn luyện mô hình",
