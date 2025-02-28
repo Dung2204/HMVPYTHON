@@ -1,4 +1,6 @@
 import streamlit as st
+
+st.set_page_config(page_title="Phân loại ảnh", layout="wide")
 import os
 import cv2
 import numpy as np
@@ -21,8 +23,6 @@ from sklearn.metrics import accuracy_score, classification_report, ConfusionMatr
 from PIL import Image
 from collections import Counter
 from mlflow.tracking import MlflowClient
-
-st.set_page_config(page_title="Phân loại ảnh", layout="wide")
 def run_ClusteringMinst_app():
     @st.cache_data  # Lưu cache để tránh load lại dữ liệu mỗi lần chạy lại Streamlit
     def get_sampled_pixels(images, sample_size=100_000):
