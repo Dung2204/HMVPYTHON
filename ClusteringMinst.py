@@ -1,6 +1,4 @@
 import streamlit as st
-
-st.set_page_config(page_title="Phân loại ảnh", layout="wide")
 import os
 import cv2
 import numpy as np
