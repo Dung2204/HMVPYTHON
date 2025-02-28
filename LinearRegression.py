@@ -469,16 +469,13 @@ def run_LinearRegression_app():
             
                 col_lr, col_lr_tip = st.columns([0.8, 0.2])
                 with col_lr:
-                    lr_method = st.selectbox("Chọn phương pháp learning rate:", 
-                                            ["constant", "invscaling", "adaptive"], 
-                                            index=0)
-                eta0 = None
-                if lr_method == "constant":
-                    col_eta, col_eta_tip = st.columns([0.8, 0.2])
-                    with col_eta:
-                        eta0 = st.number_input("Nhập giá trị eta0:", 
-                                            value=0.01, min_value=0.0001, max_value=1.0, 
-                                            step=0.0001, format="%.4f")
+                    lr_method = "constant"  # Gán cố định giá trị "constant"
+
+                col_eta, col_eta_tip = st.columns([0.8, 0.2])
+                with col_eta:
+                    eta0 = st.number_input("Chọn tốc độ học (learning rate)::", 
+                            value=0.01, min_value=0.0001, max_value=1.0, 
+                            step=0.0001, format="%.4f")
                 poly_degree = 1
                 if model_choice_to_train == "Hồi quy Đa thức":
                     col_poly, col_poly_tip = st.columns([0.8, 0.2])
