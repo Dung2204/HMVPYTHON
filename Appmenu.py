@@ -9,7 +9,7 @@ from LinearRegression import run_LinearRegression_app  # Import hàm chạy ứn
 st.set_page_config(page_title="Multi-App", layout="wide")
 
 # Sidebar chứa menu ứng dụng
-st.sidebar.title("Menu Ứng Dụng")
+st.sidebar.title("Home page")
 app_choice = st.sidebar.selectbox(
     "Chọn ứng dụng:",
     ["Linear Regression", "Classification", "Clustering"]
