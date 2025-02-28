@@ -22,6 +22,7 @@ from PIL import Image
 from collections import Counter
 from mlflow.tracking import MlflowClient
 
+st.set_page_config(page_title="Phân loại ảnh", layout="wide")
 def run_ClusteringMinst_app():
     @st.cache_data  # Lưu cache để tránh load lại dữ liệu mỗi lần chạy lại Streamlit
     def get_sampled_pixels(images, sample_size=100_000):
@@ -32,7 +33,7 @@ def run_ClusteringMinst_app():
         return np.random.randint(0, total_images, size=num_images)
 
     # Cấu hình Streamlit
-    st.set_page_config(page_title="Phân loại ảnh", layout="wide")
+    # st.set_page_config(page_title="Phân loại ảnh", layout="wide")
     # Định nghĩa hàm để đọc file .idx
     def load_mnist_images(filename):
         with open(filename, 'rb') as f:
