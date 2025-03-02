@@ -84,7 +84,7 @@ def run_PcaTSNEMinst_app():
     
 
     # Giao diện Streamlit
-    st.title("📸 MINST PCA_T-SNE")
+    st.title("📸 MNIST PCA_T-SNE")
     tabs = st.tabs([
             "Tập dữ liệu",
             "Xử lí dữ liệu",
