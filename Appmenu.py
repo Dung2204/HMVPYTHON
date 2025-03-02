@@ -27,5 +27,5 @@ elif app_choice == "Classification":
     run_ClassificationMinst_app()
 elif app_choice == "Clustering":
     run_ClusteringMinst_app()
-elif app_choice == "Pca_tSNE":
+elif app_choice == "PCA_T-SNE":
     run_PcaTSNEMinst_app()
