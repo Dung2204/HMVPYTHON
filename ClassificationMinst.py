@@ -73,7 +73,7 @@ def run_ClassificationMinst_app():
     test_labels = load_mnist_labels(test_labels_path)
 
     # Giao diện Streamlit
-    st.title("📸 Phân loại ảnh MNIST với Streamlit")
+    st.title("📸 Phân loại ảnh MINST với Streamlit")
     tabs = st.tabs([
         "Tập dữ liệu",
         "Xử lí dữ liệu",
