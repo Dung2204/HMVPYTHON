@@ -84,7 +84,7 @@ def run_PcaTSNEMinst_app():
     
 
     # Giao diện Streamlit
-    st.title("📸 MNIST Clustering")
+    st.title("📸 MNIST PCA_T-SNE")
     tabs = st.tabs([
             "Tập dữ liệu",
             "Xử lí dữ liệu",
