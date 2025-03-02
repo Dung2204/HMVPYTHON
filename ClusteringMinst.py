@@ -81,7 +81,7 @@ def run_ClusteringMinst_app():
     
 
     # Giao diện Streamlit
-    st.title("📸 MINST Clustering")
+    st.title("📸 MNIST Clustering")
     tabs = st.tabs([
             "Tập dữ liệu",
             "Xử lí dữ liệu",
