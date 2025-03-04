@@ -736,8 +736,8 @@ def run_LinearRegression_app():
         else:
             st.warning("Vui lòng huấn luyện mô hình trước.")
 
-    ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
-    ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
+   
+    # ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
     with tab_mlflow:
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
