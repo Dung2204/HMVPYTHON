@@ -738,7 +738,7 @@ def run_LinearRegression_app():
 
    
     # ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
-    with tab_log_info:
+    with tab_mlflow:
         st.header("Thông tin Thu gọn chiều & MLflow UI")
         try:
             client = MlflowClient()
