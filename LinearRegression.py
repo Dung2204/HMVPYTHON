@@ -796,7 +796,7 @@ def run_LinearRegression_app():
                 st.markdown("### Tham số đã log")
                 st.json(selected_run.data.params)
                 st.subheader("Truy cập MLflow UI")
-                mlflow_url = "https://dagshub.com/huykibo/streamlit_mlflow.mlflow"
+                mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
                 if st.button("Mở MLflow UI"):
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
