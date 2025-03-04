@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import SGDRegressor,LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
+from mpl_toolkits.mplot3d import Axes3D
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 import joblib
 import mlflow
@@ -28,13 +29,13 @@ def run_LinearRegression_app():
     # Thiết lập MLflow (Đặt sau khi mlflow_tracking_uri đã có giá trị)
     mlflow.set_tracking_uri(mlflow_tracking_uri)
 
-    # # Thiết lập biến môi trường
-    # os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
-    # os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
-    # os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
+    # Thiết lập biến môi trường
+    os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+    os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
 
-    # # Thiết lập MLflow
-    # mlflow.set_tracking_uri(mlflow_tracking_uri)
+    # Thiết lập MLflow
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
 
 
     # Khởi tạo session_state nếu chưa có
@@ -68,43 +69,6 @@ def run_LinearRegression_app():
         st.session_state["run_name"] = None
 
     st.title("Dự đoán sự sống với tập dữ liệu Titanic")
-
-    # # CSS cho tooltip (hiển thị bên trái)
-    # st.markdown("""
-    # <style>
-    # .tooltip {
-    #   position: relative;
-    #   display: inline-block;
-    #   cursor: pointer;
-    #   color: #1f77b4;
-    #   font-weight: bold;
-    #   margin-left: 5px;
-    # }
-    # .tooltip .tooltiptext {
-    #   visibility: hidden;
-    #   width: 350px;
-    #   background-color: #f9f9f9;
-    #   color: #333;
-    #   text-align: left;
-    #   border-radius: 6px;
-    #   padding: 8px;
-    #   position: absolute;
-    #   z-index: 1;
-    #   right: 105%;  /* Hiển thị bên trái */
-    #   top: 50%;
-    #   transform: translateY(-50%);
-    #   opacity: 0;
-    #   transition: opacity 0.3s;
-    #   border: 1px solid #ccc;
-    #   font-size: 0.85em;
-    #   line-height: 1.3;
-    # }
-    # .tooltip:hover .tooltiptext {
-    #   visibility: visible;
-    #   opacity: 1;
-    # }
-    # </style>
-    # """, unsafe_allow_html=True)
 
     # Tạo các tab
     tabs = st.tabs([
@@ -222,186 +186,284 @@ def run_LinearRegression_app():
 
     with tab_note:
     # Tiêu đề ứng dụng
-        option = st.selectbox("Chọn loại hồi quy ", ["Hồi quy tuyến tính", "Hồi quy tuyến tính bội", "Hồi quy đa thức"])
+        option = st.selectbox("Chọn loại hồi quy ", ["Hồi quy tuyến tính đơn", "Hồi quy tuyến tính bội", "Hồi quy đa thức"])
         # Giải thích lý thuyết bằng st.markdown()
-        if option == "Hồi quy tuyến tính":
-            st.header(" Hồi quy tuyến tính (Linear Regression)")
-            
+        if option == "Hồi quy tuyến tính đơn":
+            st.header("Hồi quy tuyến tính đơn(Simple Linear Regression)")
+            st.markdown("---")
             st.markdown("""
-            ### 📌 **Lý thuyết**
-            - **Hồi quy tuyến tính (Linear Regression)**: là một thuật toán học máy có giám sát được sử dụng để dự đoán giá trị của một biến phụ thuộc (Y) dựa vào một hoặc nhiều biến độc lập (X).
+            ###  **Lý thuyết**
+            - **Hồi quy tuyến tính đơn (Simple Linear Regression)**: 
+                - **Simple Linear Regression** là một kỹ thuật thống kê và học máy cơ bản dùng để mô hình hóa mối quan hệ tuyến tính giữa một biến độc lập (X) và một biến phụ thuộc (Y). 
+                - Đây là dạng đơn giản nhất của hồi quy tuyến tính, với mục tiêu dự đoán giá trị của Y dựa trên X thông qua một đường thẳng.
             - **Công thức tổng quát**:
             $$
-            Y = w_0 + w_1X 
+            Y = w_0 + w_1X + \\epsilon
             $$
-            - Trong đó:
-            - \\( Y \\): Biến phụ thuộc (giá trị cần dự đoán).
-            - \\( X \\): Biến độc lập.
-            - \\( w_0, w_1 \\): Hệ số hồi quy.
-
+            **Trong đó**:
+            - ( Y ): Biến phụ thuộc (giá trị cần dự đoán).
+            - ( X ): Biến độc lập.
+            -  $$( w_0 ) $$: Hệ số chặn (intercept).
+            -  $$( w_1 ) $$: Hệ số góc (slope).
+            - $$( epsilon )$$: Sai số ngẫu nhiên.
+            """)
+            st.markdown("---")  
+            st.markdown("""            
+            ### 📊 **Ví dụ đơn giản**
+            Giả sử bạn muốn dự đoán giá nhà (\\( Y \\)) dựa trên diện tích (\\( X \\)):
+            $$
+            Y = 50 + 10X
+            $$
+            - $$( w_0 = 50) $$: Giá trị cơ bản (intercept).
+            - $$( w_1 = 10) $$: Hệ số cho thấy mỗi đơn vị diện tích tăng thêm làm giá nhà tăng 10 đơn vị.
             """)
 
-            np.random.seed(42)
-            X = np.linspace(1, 10, 20).reshape(-1, 1)  # Biến X (dữ liệu đầu vào)
-            Y = 3 + 2 * X.flatten() + np.random.randn(20) * 2  # Biến Y có nhiễu
+            st.markdown("### 📊 **Ví dụ minh họa với dữ liệu chiều cao và cân nặng**")
+            X = np.array([[147], [150], [153], [158], [163], [165], [168], [170], [173], [175], [178], [180], [183]])
+            y = np.array([[49], [50], [51], [54], [58], [59], [60], [62], [63], [64], [66], [67], [68]])
 
-            df = pd.DataFrame({"X": X.flatten(), "Y": Y})
+            # Thêm cột 1 vào X để tính intercept (w_0)
+            one = np.ones((X.shape[0], 1))
+            Xbar = np.concatenate((one, X), axis=1)
 
-            # Train mô hình hồi quy tuyến tính đơn
-            model = LinearRegression()
-            model.fit(X, Y)
-            w0, w1 = model.intercept_, model.coef_[0]
+            # Tính toán các trọng số (weights) của đường hồi quy
+            A = np.dot(Xbar.T, Xbar)
+            b = np.dot(Xbar.T, y)
+            w = np.dot(np.linalg.pinv(A), b)
 
-            # Hiển thị công thức mô hình
-            st.markdown(f"""
-            ### 📌 **Biểu đồ tham khảo:**
-            $$
-            $$
-            """)
+            # Chuẩn bị đường hồi quy
+            w_0 = w[0][0]
+            w_1 = w[1][0]
+            x0 = np.linspace(145, 185, 2)
+            y0 = w_0 + w_1 * x0
 
-            # --- VẼ BIỂU ĐỒ CHÍNH XÁC ---
-            fig, ax = plt.subplots(figsize=(8, 6))
-
-            # Vẽ dữ liệu thực tế (điểm xanh)
-            ax.scatter(X, Y, color="blue", label="Dữ liệu thực tế")
-
-            # Vẽ đường hồi quy
-            X_range = np.linspace(min(X), max(X), 100).reshape(-1, 1)
-            Y_pred = model.predict(X_range)
-            ax.plot(X_range, Y_pred, color="red", linewidth=2, label="Đường hồi quy")
-
-            # Cài đặt trục
-            ax.set_xlabel("X")
-            ax.set_ylabel("Y")
-            ax.set_title("Mô hình Hồi quy tuyến tính đơn")
+            # Vẽ biểu đồ
+            fig, ax = plt.subplots()
+            ax.plot(X.T, y.T, 'ro')  # Dữ liệu thực tế
+            ax.plot(x0, y0, label='Đường hồi quy')   # Đường hồi quy
+            ax.set_xlim(140, 190)
+            ax.set_ylim(45, 75)
+            ax.set_xlabel('Chiều cao (cm)')
+            ax.set_ylabel('Cân nặng (kg)')
             ax.legend()
 
-            # Hiển thị biểu đồ trong Streamlit
+            # Hiển thị biểu đồ trên Streamlit
             st.pyplot(fig)
+
+            # In kết quả w bên dưới biểu đồ
+            st.markdown("**Kết quả trọng số (weights):**")
+            st.write(f"w = [{w_0}, {w_1}]")
+
+
+                        
             
         elif option == "Hồi quy tuyến tính bội":
             st.header(" Hồi quy tuyến tính bội (Multiple Linear Regression)")
-
+            st.markdown("---") 
             st.markdown("""
-            ### 📌 **Lý thuyết**
-            - **Hồi quy tuyến tính bội (Multiple Linear Regression)**: là một mở rộng của hồi quy tuyến tính đơn, trong đó có nhiều biến độc lập (X1, X2, ..., Xn) ảnh hưởng đến biến phụ thuộc (Y).
+            ###  **Lý thuyết**
+            - **Hồi quy tuyến tính bội (Multiple Linear Regression)**:
+                - **Multiple Linear Regression** là một kỹ thuật thống kê và học máy mở rộng từ **Simple Linear Regression**,
+                - Được sử dụng để mô hình hóa mối quan hệ tuyến tính giữa một biến phụ thuộc (dependent variable) và nhiều biến độc lập (independent variables). 
+                - Mục tiêu là dự đoán giá trị của biến phụ thuộc dựa trên sự kết hợp của nhiều biến độc lập.
             - **Công thức tổng quát**:
             $$
-            Y = w_0 + w_1X_1 + w_2X_2 + ... + w_nX_n 
+            Y = w_0 + w_1X_1 + w_2X_2 + ... + w_nX_n + \\epsilon
             $$
-            - Trong đó:
-            - \\( X_1, X_2, ..., X_n \\) là các biến độc lập.
-            - \\( w_0, w_1, ..., w_n \\) là các hệ số hồi quy.
+            **Trong đó:**   
+            - ( Y ): Biến phụ thuộc (giá trị cần dự đoán, ví dụ: giá nhà).
+            - $$( X_1, X_2, ..., X_n)$$: Các biến độc lập (ví dụ: diện tích, số phòng).
+            - $$( w_0 )$$: Hệ số chặn (intercept).
+            - $$( w_1, w_2, ..., w_n )$$: Các hệ số hồi quy (weights).
+            - $$(epsilon)$$: Sai số ngẫu nhiên.
+            """)
+            
+            st.markdown("---") 
+            st.markdown("### 📊 **Ví dụ minh họa: Dự đoán giá nhà**")
+            st.markdown("""
+            **Dữ liệu mẫu:**
+            - Diện tích ($$X_1$$ (m²)): 
+                - [40, 50, 60, 70, 80, 90]
+            - Số phòng $$(X_2)$$: 
+                - [1, 2, 3, 4, 5, 6]
+            - Giá nhà (Y, triệu VNĐ): 
+                - [150, 200, 250, 300, 350, 400]
+            """)
+
+            # Dữ liệu mẫu
+            X1 = np.array([[40],[50], [60], [70], [80], [90]])  # Diện tích
+            X2 = np.array([[1],[2], [3], [4], [5], [6]])     # Số phòng
+            Y = np.array([[150],[200], [250], [300], [350], [400]])  # Giá nhà
+
+            # Kết hợp các biến độc lập thành ma trận
+            one = np.ones((X1.shape[0], 1))  # Cột 1 cho intercept
+            Xbar = np.concatenate((one, X1, X2), axis=1)  # Ma trận [1, X1, X2]
+
+            # Tính toán các trọng số (weights)
+            A = np.dot(Xbar.T, Xbar)
+            b = np.dot(Xbar.T, Y)
+            w = np.dot(np.linalg.pinv(A), b)
+
+            # Trích xuất w_0, w_1, w_2
+            w_0 = w[0][0]
+            w_1 = w[1][0]
+            w_2 = w[2][0]
+
+            # Chuẩn bị dữ liệu để vẽ biểu đồ 3D
+            X1_grid, X2_grid = np.meshgrid(np.linspace(40, 90, 10), np.linspace(1, 6, 10))
+            Y_pred = w_0 + w_1 * X1_grid + w_2 * X2_grid
+
+            # Vẽ biểu đồ 3D
+            fig = plt.figure(figsize=(10, 8))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(X1, X2, Y, c='r', marker='o', label='Dữ liệu thực tế')
+            ax.plot_surface(X1_grid, X2_grid, Y_pred, alpha=0.5, cmap='viridis', label='Mặt phẳng hồi quy')
+            ax.set_xlabel('Diện tích (m²)')
+            ax.set_ylabel('Số phòng')
+            ax.set_zlabel('Giá nhà (triệu VNĐ)')
+            ax.legend()
+
+            # Hiển thị biểu đồ trên Streamlit
+            st.pyplot(fig)
+
+            # In kết quả w
+            st.markdown("**Kết quả trọng số (weights):**")
+            st.write(f"w = [{w_0:.4f}, {w_1:.4f}, {w_2:.4f}]")
+            st.markdown("""
+            - $$( w_0 )$$: Hệ số chặn (intercept).
+            - $$( w_1 )$$: Hệ số cho biến diện tích $$(X_1)$$.
+            - $$( w_2 )$$: Hệ số cho biến số phòng $$(X_2)$$.
             """)
 
             
-            np.random.seed(42)
-            X1 = np.linspace(1, 10, 20)  # Biến X1
-            X2 = np.random.uniform(1, 5, 20)  # Biến X2
-            Y = 3 + 1.5 * X1 + 2 * X2 + np.random.randn(20) * 2  # Tạo dữ liệu với nhiễu
-
-            df = pd.DataFrame({"X1": X1, "X2": X2, "Y": Y})
-
-            # Train mô hình hồi quy tuyến tính bội
-            model = LinearRegression()
-            model.fit(df[["X1", "X2"]], df["Y"])
-            w0, w1, w2 = model.intercept_, model.coef_[0], model.coef_[1]
-
-            # Hiển thị công thức mô hình
-            st.markdown(f"""
-            ### 📌 **Biểu đồ tham khảo:**
-            $$
-            $$
+            st.markdown("### 📊 **Ví dụ: Dự đoán điểm số học tập**")
+            st.markdown("""
+            **Dữ liệu mẫu:**
+            - Số giờ học mỗi ngày $$(X_1)$$: 
+                - [1, 2, 3, 4, 5, 6, 7, 8]
+            - Số giờ ngủ mỗi đêm $$(X_2)$$: 
+                - [5.0, 5.5, 6.0, 6.5, 7.0, 8.0, 8.5, 9.0]
+            - Điểm số trung bình (Y): 
+                - [ 65, 70, 75, 80, 85, 90, 95, 100]
             """)
 
-            # --- VẼ BIỂU ĐỒ 3D CHÍNH XÁC ---
-            fig = plt.figure(figsize=(8, 6))
-            ax = fig.add_subplot(111, projection="3d")
+            # Dữ liệu mẫu
+            X1 = np.array([[1], [2], [3], [4], [5], [6], [7], [8]])  # Số giờ học
+            X2 = np.array([[5.0], [5.5], [6.0], [6.5], [7.0], [8.0], [8.5], [9.0]])  # Số giờ ngủ
+            Y = np.array([[65], [70], [75], [80], [85], [90], [95], [100]])  # Điểm số
 
-            # Vẽ điểm dữ liệu thực tế
-            ax.scatter(df["X1"], df["X2"], df["Y"], color="blue", label="Dữ liệu thực tế")
+            # Kết hợp các biến độc lập thành ma trận
+            one = np.ones((X1.shape[0], 1))  # Cột 1 cho intercept
+            Xbar = np.concatenate((one, X1, X2), axis=1)  # Ma trận [1, X1, X2]
 
-            # Vẽ mặt phẳng hồi quy
-            X1_range = np.linspace(min(X1), max(X1), 20)
-            X2_range = np.linspace(min(X2), max(X2), 20)
-            X1_grid, X2_grid = np.meshgrid(X1_range, X2_range)
-            Y_pred = w0 + w1 * X1_grid + w2 * X2_grid  # Mặt phẳng hồi quy chính xác
+            # Tính toán các trọng số (weights)
+            A = np.dot(Xbar.T, Xbar)
+            b = np.dot(Xbar.T, Y)
+            w = np.dot(np.linalg.pinv(A), b)
 
-            ax.plot_surface(X1_grid, X2_grid, Y_pred, color="red", alpha=0.5, edgecolor='k')
+            # Trích xuất w_0, w_1, w_2
+            w_0 = w[0][0]
+            w_1 = w[1][0]
+            w_2 = w[2][0]
 
-            # Cài đặt trục
-            ax.set_xlabel("X1")
-            ax.set_ylabel("X2")
-            ax.set_zlabel("Y")
-            ax.set_title("Mô hình Hồi quy tuyến tính bội")
+            # Chuẩn bị dữ liệu để vẽ biểu đồ 3D
+            X1_grid, X2_grid = np.meshgrid(np.linspace(1, 6, 10), np.linspace(5, 9, 10))
+            Y_pred = w_0 + w_1 * X1_grid + w_2 * X2_grid
+
+            # Vẽ biểu đồ 3D
+            fig = plt.figure(figsize=(10, 8))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(X1, X2, Y, c='r', marker='o', label='Dữ liệu thực tế')
+            ax.plot_surface(X1_grid, X2_grid, Y_pred, alpha=0.5, cmap='viridis', label='Mặt phẳng hồi quy')
+            ax.set_xlabel('Số giờ học mỗi ngày')
+            ax.set_ylabel('Số giờ ngủ mỗi đêm')
+            ax.set_zlabel('Điểm số trung bình')
             ax.legend()
 
-            # Hiển thị biểu đồ trong Streamlit
+            # Hiển thị biểu đồ trên Streamlit
             st.pyplot(fig)
+
+            # In kết quả w
+            st.markdown("**Kết quả trọng số (weights):**")
+            st.write(f"w = [{w_0:.4f}, {w_1:.4f}, {w_2:.4f}]")
+            st.markdown("""
+            -  $$( w_0 ) $$: Hệ số chặn (intercept).
+            -  $$( w_1 ) $$: Hệ số cho số giờ học  $$(X_1) $$.
+            -  $$( w_2 ) $$: Hệ số cho số giờ ngủ  $$(X_2) $$.
+            """)
+
+
 
         elif option == "Hồi quy đa thức":
             st.header("Hồi quy đa thức (Polynomial Regression)")
-
+            st.markdown("---") 
             st.markdown("""
-            ### 📌 **Lý thuyết**
-            - Hồi quy đa thức (Polynomial Regression) là một mở rộng của hồi quy tuyến tính, trong đó mối quan hệ giữa biến độc lập \(X\) và biến phụ thuộc \(Y\) không phải là tuyến tính mà là hàm bậc cao của \(X\).
-            - Công thức tổng quát:
+            ### **Lý thuyết**
+            - **Hồi quy đa thức (Polynomial Regression)n**:
+                - **Polynomial Regression** là một kỹ thuật hồi quy mở rộng từ **Linear Regression.**
+                - Được sử dụng để mô hình hóa mối quan hệ phi tuyến tính giữa một hoặc nhiều biến độc lập (X) và một biến phụ thuộc (Y) thông qua một hàm đa thức (polynomial). 
+                - Mặc dù quan hệ giữa 𝑋 và Y là phi tuyến, mô hình vẫn tuyến tính với các tham số (coefficients), do đó được gọi là "hồi quy tuyến tính đa thức."
+            - **Công thức**:
             $$
-            Y = w_0 + w_1X + w_2X^2 + ... + w_nX^n + \epsilon
+            Y = w_0 + w_1X + w_2X^2 + ... + w_nX^n + \\epsilon
             $$
-            - Trong đó:
-            - \\( X \\) là biến độc lập.
-            - \\( w_0, w_1, ..., w_n \\) là các hệ số hồi quy.
-            - \\( X^2, X^3, ..., X^n \\) là các bậc cao hơn của biến \\( X \\).
-            
+            **Trong đó:**
+            - $$( Y )$$: Biến phụ thuộc (giá trị cần dự đoán).
+            - $$( X )$$: Biến độc lập.
+            - $$( w_0, w_1, ..., w_n )$$: Hệ số hồi quy.
+            - $$( n )$$: Bậc của đa thức.
+            - $$( epsilon )$$: Sai số ngẫu nhiên.
+            """)
+            st.markdown("---") 
+            st.markdown("### 📊 **Ví dụ: Dự đoán tốc độ xe**")
+            st.markdown("""
+            **Dữ liệu mẫu:**
+            - Thời gian (X, giây): [0, 2, 4, 6, 8, 10]
+            - Tốc độ (Y, km/h): [0, 20, 40, 60, 80]
             """)
 
-            # --- Sinh dữ liệu mẫu ---
-            np.random.seed(42)
-            X = np.linspace(1, 10, 20).reshape(-1, 1)
-            Y = 3 + 2 * X.flatten() + 1.2 * X.flatten()**2 + np.random.randn(20) * 5  # Hàm bậc 2 có nhiễu
+            # Dữ liệu mẫu
+            X = np.array([0, 2, 4, 6, 8]).reshape(-1, 1)  # Thời gian (reshape để thành 2D)
+            Y = np.array([0, 20, 60, 80, 70])  # Tốc độ
 
-            df = pd.DataFrame({"X": X.flatten(), "Y": Y})
-
-            # Biến đổi X thành dạng đa thức bậc 2
-            poly = PolynomialFeatures(degree=2)  # Chọn hồi quy bậc 2
+            # Tạo các đặc trưng đa thức (bậc 2)
+            poly = PolynomialFeatures(degree=2)
             X_poly = poly.fit_transform(X)
 
-            # Train mô hình hồi quy đa thức
+            # Huấn luyện mô hình Linear Regression trên dữ liệu đa thức
             model = LinearRegression()
             model.fit(X_poly, Y)
-            w0, w1, w2 = model.intercept_, model.coef_[1], model.coef_[2]
 
-            # Hiển thị công thức mô hình
-            st.markdown(f"""
-            ### 📌 **Công thức mô hình tìm được (bậc 2):**
-            $$  
-            $$
-            """)
+            # Lấy các hệ số
+            w_0 = model.intercept_  # Hệ số chặn
+            w = model.coef_  # Hệ số (w_1, w_2, ...)
+            w_1, w_2 = w[1], w[2]  # Trích xuất w_1 và w_2 (bậc 2)
 
-            # --- VẼ BIỂU ĐỒ CHÍNH XÁC ---
-            fig, ax = plt.subplots(figsize=(8, 6))
+            # Chuẩn bị dữ liệu để vẽ
+            X_smooth = np.linspace(0, 10, 100).reshape(-1, 1)
+            X_poly_smooth = poly.transform(X_smooth)
+            Y_pred = model.predict(X_poly_smooth)
 
-            # Vẽ dữ liệu thực tế
-            ax.scatter(X, Y, color="blue", label="Dữ liệu thực tế")
-
-            # Vẽ đường hồi quy đa thức
-            X_range = np.linspace(min(X), max(X), 100).reshape(-1, 1)
-            X_range_poly = poly.transform(X_range)
-            Y_pred = model.predict(X_range_poly)
-            ax.plot(X_range, Y_pred, color="red", linewidth=2, label="Đường hồi quy đa thức")
-
-            # Cài đặt trục
-            ax.set_xlabel("X")
-            ax.set_ylabel("Y")
-            ax.set_title("Mô hình Hồi quy đa thức bậc 2")
+            # Vẽ biểu đồ
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.scatter(X, Y, color='red', label='Dữ liệu thực tế')
+            ax.plot(X_smooth, Y_pred, color='blue', label='Đường cong đa thức (bậc 2)')
+            ax.set_xlabel('Thời gian (giây)')
+            ax.set_ylabel('Tốc độ (km/h)')
+            ax.set_title('Polynomial Regression: Tốc độ xe theo thời gian')
             ax.legend()
 
-            # Hiển thị biểu đồ trong Streamlit
+            # Hiển thị biểu đồ trên Streamlit
             st.pyplot(fig)
-        
 
-        st.markdown("---")
+            # In kết quả w
+            st.markdown("**Kết quả trọng số (weights):**")
+            st.write(f"w_0 = {w_0:.4f}, w_1 = {w_1:.4f}, w_2 = {w_2:.4f}")
+            st.markdown("""
+            - $$( w_0 )$$: Hệ số chặn.
+            - $$( w_1 )$$: Hệ số cho $$( X )$$.
+            - $$( w_2 )$$: Hệ số cho $$( X^2 )$$.
+            """)
 
          # ---------------- Huấn luyện & Kiểm thử mô hình ----------------
     with tab_train:
@@ -478,7 +540,7 @@ def run_LinearRegression_app():
 
                 col_eta, col_eta_tip = st.columns([0.8, 0.2])
                 with col_eta:
-                    eta0 = st.number_input("Chọn tốc độ học (learning rate)::", 
+                    eta0 = st.number_input("Chọn tốc độ học (learning rate):", 
                             value=0.01, min_value=0.0001, max_value=1.0, 
                             step=0.0001, format="%.4f")
                 poly_degree = 1
@@ -604,7 +666,7 @@ def run_LinearRegression_app():
                         st.table(results_df)
 
 
-
+                        st.markdown("---") 
                         # Giải thích kết quả ngắn gọn hơn
                         st.markdown("### ℹ️ Giải thích kết quả")
                         st.markdown("""
@@ -619,34 +681,34 @@ def run_LinearRegression_app():
                         values = [np.mean(cv_scores), mse_val, r2_val, accuracy_val, mse_test, r2_test, accuracy_test]
 
                         # Vẽ biểu đồ cột cho các chỉ số chính
-                        st.markdown("### 📊 **Biểu đồ so sánh các chỉ số chính**")
+                        # st.markdown("### 📊 **Biểu đồ so sánh các chỉ số chính**")
 
-                        fig, ax = plt.subplots(figsize=(8, 5))
-                        sns.barplot(x=values, y=metrics, ax=ax, palette="coolwarm")
+                        # fig, ax = plt.subplots(figsize=(8, 5))
+                        # sns.barplot(x=values, y=metrics, ax=ax, palette="coolwarm")
 
-                        # Gán nhãn giá trị lên cột
-                        for i, v in enumerate(values):
-                            ax.text(v, i, f"{v:.2e}", color='black', va='center')
+                        # # Gán nhãn giá trị lên cột
+                        # for i, v in enumerate(values):
+                        #     ax.text(v, i, f"{v:.2e}", color='black', va='center')
 
-                        ax.set_xlabel("Giá trị")
-                        ax.set_ylabel("Chỉ số")
-                        ax.set_title("So sánh các chỉ số chính")
+                        # ax.set_xlabel("Giá trị")
+                        # ax.set_ylabel("Chỉ số")
+                        # ax.set_title("So sánh các chỉ số chính")
 
-                        st.pyplot(fig)
+                        # st.pyplot(fig)
 
-                        # Vẽ biểu đồ line cho Cross Validation Scores (R²)
-                        st.markdown("### 📉 **Biểu đồ Cross Validation Scores (R²)**")
+                        # # Vẽ biểu đồ line cho Cross Validation Scores (R²)
+                        # st.markdown("### 📉 **Biểu đồ Cross Validation Scores (R²)**")
 
-                        fig, ax = plt.subplots(figsize=(8, 4))
-                        sns.lineplot(x=range(len(cv_scores)), y=cv_scores, marker='o', ax=ax, color='blue')
-                        ax.axhline(np.mean(cv_scores), linestyle="--", color="red", label="Mean R²")  # Đường trung bình
+                        # fig, ax = plt.subplots(figsize=(8, 4))
+                        # sns.lineplot(x=range(len(cv_scores)), y=cv_scores, marker='o', ax=ax, color='blue')
+                        # ax.axhline(np.mean(cv_scores), linestyle="--", color="red", label="Mean R²")  # Đường trung bình
 
-                        ax.set_xlabel("Fold")
-                        ax.set_ylabel("R² Score")
-                        ax.set_title("Cross Validation Scores (R²)")
-                        ax.legend()
+                        # ax.set_xlabel("Fold")
+                        # ax.set_ylabel("R² Score")
+                        # ax.set_title("Cross Validation Scores (R²)")
+                        # ax.legend()
 
-                        st.pyplot(fig)
+                        # st.pyplot(fig)
             else:
                 st.warning("Vui lòng chia tập dữ liệu trước.")
 
@@ -674,8 +736,8 @@ def run_LinearRegression_app():
         else:
             st.warning("Vui lòng huấn luyện mô hình trước.")
 
-    # ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
-    # ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
+    ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
+    ---------------- Tab 5: Thông tin huấn luyện & MLflow UI ----------------
     with tab_mlflow:
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
@@ -769,3 +831,6 @@ def run_LinearRegression_app():
 
 if __name__ == "__main__":
     run_LinearRegression_app()
+
+
+    # cd "c:/Users/Dell/OneDrive/Pictures/Documents/Code/python/OpenCV/HMVPYTHON/App" 
