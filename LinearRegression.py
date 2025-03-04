@@ -742,7 +742,7 @@ def run_LinearRegression_app():
         st.header("Thông tin Thu gọn chiều & MLflow UI")
         try:
             client = MlflowClient()
-            experiment_id = "2"  # Thay bằng ID thực tế nếu cần
+            experiment_id = "LinearRegression"  # Thay bằng ID thực tế nếu cần
             runs = client.search_runs(experiment_ids=[experiment_id])
 
             st.subheader("Đổi tên Run")
