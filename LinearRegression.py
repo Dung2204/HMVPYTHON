@@ -476,8 +476,8 @@ def run_LinearRegression_app():
                 else:
                     st.write("**Nhập tỷ lệ chia tập dữ liệu:**")
                     with mlflow.start_run():
-                        test_pct = st.slider("Chọn % tỷ lệ tập test (%)", 0, 50, 15)
-                        valid_pct = st.slider("Chọn % tỷ lệ tập validation (trong phần train) (%)", 0, 50, 15)
+                        test_pct = st.slider("Chọn % tỷ lệ tập test", 0, 50, 15)
+                        valid_pct = st.slider("Chọn % tỷ lệ tập validation (trong phần train)", 0, 50, 15)
                         train_pct = 100 - (test_pct + valid_pct)
                         total = test_pct + valid_pct + train_pct
                         st.markdown(f"""
