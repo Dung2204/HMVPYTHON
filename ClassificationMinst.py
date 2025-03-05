@@ -646,8 +646,6 @@ def run_ClassificationMinst_app():
     
                 st.markdown("### Chỉ số đã log")
                 metrics = {
-                    "max_depth": selected_run.data.metrics.get("max_depth", "N/A"),
-                    "n_folds": selected_run.data.metrics.get("n_folds", "N/A"),
                     "mean_cv_accuracy": selected_run.data.metrics.get("mean_cv_accuracy", "N/A"),
                     "std_cv_accuracy": selected_run.data.metrics.get("std_cv_accuracy", "N/A"),
                     "accuracy": selected_run.data.metrics.get("accuracy", "N/A"),
