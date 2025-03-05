@@ -7,6 +7,7 @@ import pickle
 import seaborn as sns
 import random
 import struct
+import time
 import altair
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.decomposition import PCA
@@ -17,7 +18,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay,adjusted_rand_score
 from PIL import Image
 from collections import Counter
 from mlflow.tracking import MlflowClient
@@ -83,14 +84,339 @@ def run_ClusteringMinst_app():
     # Giao diện Streamlit
     st.title("📸 MNIST Clustering")
     tabs = st.tabs([
+            "Thông tin",
             "Tập dữ liệu",
             "Xử lí dữ liệu",
-            "Thông tin",
-            "Huấn luyện mô hình",
-            "Đánh giá mô hình",
+            "Phân cụm dữ liệu",
+            "Dự đoán",
             "Thông tin & Mlflow",
     ])
-    tab_info, tab_load,tab_note, tab_preprocess, tab_split ,tab_mlflow= tabs
+    tab_note,tab_info,tab_load, tab_preprocess, tab_demo ,tab_mlflow= tabs
+
+
+    with tab_note:
+        with st.expander("**Thông tin mô hình**", expanded=True):
+            # Chọn mô hình
+            model_option1 = st.selectbox("Chọn mô hình", ["K-Means", "DBSCAN"])
+            
+            if model_option1 == "K-Means":
+                st.markdown("## 🔹 K-Means Clustering")
+                st.markdown("---")
+
+                st.markdown("**Khái niệm**")
+                st.write("""
+                - **K-Means** là một thuật toán phân cụm không giám sát, chia tập dữ liệu thành $K$ cụm (clusters) sao cho các điểm trong cùng một cụm gần nhau nhất, dựa trên khoảng cách (thường là khoảng cách Euclidean) đến tâm cụm (centroid).
+                - Mục tiêu của K-Means là **tối thiểu hóa tổng bình phương khoảng cách** (Within-Cluster Sum of Squares - WCSS) giữa các điểm dữ liệu và tâm cụm tương ứng của chúng.
+                """)
+
+                st.markdown("""
+                ### 🔄 **Quy trình hoạt động của K-Means**
+
+                - **Bước 1**: Khởi tạo ngẫu nhiên $K$ tâm cụm $\mu_1, \mu_2, ..., \mu_K$.
+
+                - **Bước 2**: Lặp lại quá trình cập nhật tâm cụm cho tới khi dừng:
+                - **a**. Xác định nhãn cho từng điểm dữ liệu $c_i$ dựa vào khoảng cách tới từng tâm cụm:
+                    $$
+                    c_i = arg\min_j \|x_i - \mu_j\|^2
+                    $$
+                **Trong đó**:  
+                - $$c_i$$ là chỉ số cụm (từ 1 đến $K$).  
+                - $$\|x_i - \mu_j\|^2$$ là khoảng cách Euclidean bình phương giữa điểm $x_i$ và tâm cụm $\mu_j$.
+
+                - **b**. Tính lại tâm cụm $\mu_j$ bằng trung bình của tất cả các điểm dữ liệu thuộc cụm $j$:
+                """)
+
+                st.latex(r"\mu_j = \frac{\sum_{i=1}^{n} I(c_i = j) x_i}{\sum_{i=1}^{n} I(c_i = j)}")
+
+                st.markdown("""
+                **Trong đó**: 
+                - Giá trị của $$(I(c_i = j))$$ phụ thuộc vào điều kiện $$(c_i = j)$$:
+                    - Nếu $$(c_i = j)$$ (tức là điểm dữ liệu thứ $$i$$ thuộc cụm $$j$$), thì $$(I(c_i = j))$$ = 1.
+                    - Nếu $$(c_i ≠ j)$$ (tức là điểm dữ liệu thứ $$i$$ không thuộc cụm $$j$$), thì $$(I(c_i = j))$$ = 0.
+                - $$(n)$$ là số lượng điểm dữ liệu.
+                - Thuật toán dừng khi tâm cụm không thay đổi giữa các vòng lặp hoặc đạt số lần lặp tối đa (`max_iter`).
+                """)
+                st.markdown("---")
+                st.markdown("### 📐 **Công thức toán học**")
+                st.write("""
+                - Mục tiêu tối ưu hóa của K-Means là:  
+                $$
+                J = \sum_{k=1}^{K}\sum_{i=1}^{n} ||x_i - \mu_k||^2
+                $$
+                Trong đó:  
+                - \(J\): Tổng bình phương khoảng cách (WCSS - Within-Cluster Sum of Squares).  
+                - \(n\): Số lượng điểm dữ liệu.  
+                - \(K\): Số cụm.  
+                - $$(x_i)$$: Điểm dữ liệu thứ \(i\).  
+                - $$(\mu_k)$$: Tâm cụm của cụm \(k\).  
+                - $$(||x_i - \mu_k||^2)$$: Khoảng cách Euclidean bình phương giữa điểm $$(x_i)$$ và tâm cụm $$(\mu_k)$$.
+                """)
+                st.markdown("---")
+                st.markdown("### 🔧 **Một số cải tiến của K-Means**")
+                st.write("""
+                - **Mini-Batch K-Means**: Sử dụng các batch nhỏ của dữ liệu để cập nhật tâm cụm, giúp giảm thời gian tính toán trên dữ liệu lớn.
+                - **K-Means với chuẩn hóa dữ liệu**: Chuẩn hóa (scaling) dữ liệu trước khi áp dụng K-Means để tránh đặc trưng có thang đo lớn ảnh hưởng đến kết quả phân cụm.
+                """)
+                
+
+                means = [[2, 2], [8, 3], [3, 6]]
+                cov = [[1, 0], [0, 1]]
+                N = 500
+
+                # Tạo dữ liệu phân cụm
+                X0 = np.random.multivariate_normal(means[0], cov, N)
+                X1 = np.random.multivariate_normal(means[1], cov, N)
+                X2 = np.random.multivariate_normal(means[2], cov, N)
+
+                X = np.concatenate((X0, X1, X2), axis=0)
+                K = 3
+
+                # Tạo nhãn ban đầu
+                original_label = np.asarray([0]*N + [1]*N + [2]*N)  # Loại bỏ .T vì không cần thiết
+
+                # Hàm hiển thị biểu đồ phân cụm, trả về figure để sử dụng bên ngoài
+                def kmeans_display(X, labels):
+                    K = np.amax(labels) + 1  # Số cụm (K)
+                    
+                    # Tạo figure và axes cho matplotlib
+                    fig, ax = plt.subplots(figsize=(8, 6))
+                    
+                    # Vẽ từng cụm với màu và kiểu khác nhau
+                    colors = ['blue', 'green', 'red']  # Màu cho 3 cụm
+                    markers = ['^', 'o', 's']  # Kiểu marker cho 3 cụm
+                    
+                    for k in range(K):
+                        X_k = X[labels == k, :]
+                        ax.plot(X_k[:, 0], X_k[:, 1], 
+                                marker=markers[k], 
+                                color=colors[k], 
+                                markersize=4, 
+                                alpha=0.8, 
+                                label=f'Cụm {k}')
+                    
+                    # Thiết lập giao diện biểu đồ
+                    ax.set_xlabel("Tọa độ X")
+                    ax.set_ylabel("Tọa độ Y")
+                    ax.set_title("Biểu đồ phân cụm K-Means với dữ liệu cố định")
+                    ax.legend()
+                    ax.axis('equal')  # Đảm bảo tỷ lệ trục x và y bằng nhau
+                    
+                    return fig  # Trả về figure để sử dụng bên ngoài
+
+                # Giao diện Streamlit
+                st.markdown("---")
+                st.markdown("### 📊 **Phân cụm K-Means với dữ liệu cố định**")
+
+                # Hiển thị nút để tạo và hiển thị phân cụm
+                if st.button("Hiển thị dữ liệu và phân cụm"):
+                    # Hiển thị dữ liệu gốc
+                    st.write("**Dữ liệu gốc (3 cụm):**")
+                    for i in range(len(X)):
+                        point = X[i]
+                        cluster = original_label[i]
+                        # st.write(f"Điểm {point} thuộc cụm {cluster}")
+                    
+                    # Hiển thị biểu đồ phân cụm ban đầu
+                    fig = kmeans_display(X, original_label)  # Lưu figure từ hàm
+                    st.pyplot(fig)  # Hiển thị trên Streamlit
+                    
+                    # Thực hiện K-Means và hiển thị kết quả
+                    kmeans = KMeans(n_clusters=K, random_state=42, n_init=10)
+                    kmeans.fit(X)
+                    cluster_labels = kmeans.labels_
+                    
+                    st.write("**Kết quả phân cụm K-Means:**")
+                    for i in range(len(X)):
+                        point = X[i]
+                        cluster = cluster_labels[i]
+                        # st.write(f"Điểm {point} thuộc cụm {cluster}")
+                    
+                    # Hiển thị biểu đồ phân cụm K-Means
+                    fig = kmeans_display(X, cluster_labels)  # Lưu figure từ hàm
+                    st.pyplot(fig)  # Hiển thị trên Streamlit
+                    
+                    
+
+                st.markdown("---")
+                st.markdown("### 👍 **Ưu điểm**")
+                st.write("""
+                - Đơn giản, dễ triển khai và tính toán nhanh với dữ liệu nhỏ hoặc trung bình.
+                - Hiệu quả khi các cụm có hình dạng cầu (spherical) và kích thước tương đương.
+                """)
+
+                st.markdown("### ⚠️ **Nhược điểm**")
+                st.write("""
+                - Cần chọn trước số cụm $K$, thường sử dụng phương pháp Elbow hoặc Silhouette để ước lượng.
+                - Nhạy cảm với giá trị ban đầu của tâm cụm, có thể dẫn đến kết quả khác nhau.
+                - Không hoạt động tốt nếu cụm có hình dạng phức tạp (không phải hình cầu) hoặc có kích thước, mật độ khác nhau.
+                - Nhạy cảm với nhiễu (outliers) và dữ liệu có thang đo khác nhau (yêu cầu chuẩn hóa).
+                """)
+
+            elif model_option1 == "DBSCAN":
+                st.markdown("## 🔹 DBSCAN (Density-Based Clustering)")
+                st.markdown("---")
+
+                st.markdown("**Khái niệm**")
+                st.write("""
+                - **DBSCAN (Density-Based Spatial Clustering of Applications with Noise)** là một thuật toán phân cụm dựa trên mật độ, không yêu cầu xác định trước số lượng cụm.
+                - Phù hợp với dữ liệu có hình dạng cụm phức tạp và có khả năng phát hiện nhiễu (outlier).
+                """)
+                st.markdown("---")
+                st.markdown("### 🔄 **Quy trình hoạt động của DBSCAN**")
+                st.write("""
+                - **Bước 1:** Chọn ngẫu nhiên một điểm dữ liệu chưa được thăm (unvisited).
+
+                - **Bước 2:** Kiểm tra số lượng điểm trong vùng lân cận bán kính `eps` của điểm đó:
+                    - Nếu số điểm >= `min_samples`, tạo một cụm mới và thêm điểm này vào cụm.
+                    - Nếu không, đánh dấu điểm này là nhiễu (noise).
+
+                - **Bước 3:** Với mỗi điểm trong cụm, kiểm tra lân cận của nó:
+                    - Nếu tìm thấy các điểm lân cận mới thỏa mãn `min_samples`, thêm chúng vào cụm và tiếp tục mở rộng.
+                    
+                - **Bước 4:** Lặp lại quá trình cho đến khi tất cả các điểm được thăm hoặc phân loại.
+
+                - **Bước 5:** Kết thúc khi không còn điểm nào chưa được xử lý.
+                """)
+                st.markdown("---")
+                st.markdown("### 📐 **Công thức toán học**")
+                st.write("""
+                DBSCAN sử dụng khoảng cách **Euclidean** để xác định điểm lân cận, được tính bằng công thức:
+                $$
+                d(p, q) = \sqrt{\sum_{i=1}^{n} (p_i - q_i)^2}
+                $$
+                **trong đó:**
+                - $$d( p , q )$$ là hai điểm trong không gian \( n \) chiều.
+                - $$(p_i)$$ và $$(q_i)$$ và là tọa độ của $$(p)$$ và $$(q)$$ điểm trong không gian n chiều.
+                """)
+                st.markdown("---")
+                st.markdown("### 🔧 **Một số cải tiến**")
+                st.write("""
+                - **OPTICS**: Mở rộng DBSCAN để xử lý dữ liệu có mật độ thay đổi, tạo ra thứ tự phân cấp các cụm.
+                - **HDBSCAN**: Kết hợp phân cụm phân cấp với DBSCAN, tự động chọn `eps` và cải thiện hiệu quả trên dữ liệu phức tạp.
+                - **GDBSCAN**: Tổng quát hóa DBSCAN để áp dụng cho các loại dữ liệu không gian khác nhau.
+                """)
+
+
+                means = [[2, 2], [8, 3], [3, 6]]
+                cov = [[1, 0], [0, 1]]
+                N = 500
+
+                # Tạo dữ liệu phân cụm
+                X0 = np.random.multivariate_normal(means[0], cov, N)
+                X1 = np.random.multivariate_normal(means[1], cov, N)
+                X2 = np.random.multivariate_normal(means[2], cov, N)
+
+                X = np.concatenate((X0, X1, X2), axis=0)
+
+                # Tạo nhãn ban đầu (dữ liệu gốc)
+                original_label = np.asarray([0]*N + [1]*N + [2]*N)
+
+                # Hàm hiển thị biểu đồ phân cụm, trả về figure để sử dụng bên ngoài
+                def dbscan_display(X, labels):
+                    # Xử lý nhãn - DBSCAN có thể gán nhãn -1 cho các điểm noise
+                    unique_labels = np.unique(labels)
+                    n_clusters = len(unique_labels) - (1 if -1 in unique_labels else 0)  # Loại bỏ noise nếu có
+                    
+                    # Tạo figure và axes cho matplotlib
+                    fig, ax = plt.subplots(figsize=(8, 6))
+                    
+                    # Vẽ từng cụm với màu và kiểu khác nhau
+                    colors = ['blue', 'green', 'red', 'purple', 'orange', 'pink']  # Màu cho các cụm
+                    markers = ['^', 'o', 's', 'D', '*', 'v']  # Kiểu marker
+                    
+                    for label in unique_labels:
+                        if label == -1:  # Điểm noise
+                            color = 'black'
+                            marker = 'x'
+                            label_text = 'Noise'
+                        else:
+                            color = colors[label % len(colors)]
+                            marker = markers[label % len(markers)]
+                            label_text = f'Cụm {label}'
+                        
+                        X_k = X[labels == label, :]
+                        ax.plot(X_k[:, 0], X_k[:, 1], 
+                                marker=marker, 
+                                color=color, 
+                                markersize=4, 
+                                alpha=0.8, 
+                                label=label_text)
+                    
+                    # Thiết lập giao diện biểu đồ
+                    ax.set_xlabel("Tọa độ X")
+                    ax.set_ylabel("Tọa độ Y")
+                    ax.set_title("Biểu đồ phân cụm DBSCAN với dữ liệu cố định")
+                    ax.legend()
+                    ax.axis('equal')  # Đảm bảo tỷ lệ trục x và y bằng nhau
+                    
+                    # Hiển thị số cụm (nếu có)
+                    if n_clusters > 0:
+                        st.write(f"Số cụm được phát hiện: {n_clusters}")
+                    else:
+                        st.write("Không phát hiện cụm nào (có thể tất cả là noise)")
+                    
+                    return fig  # Trả về figure để sử dụng bên ngoài
+
+                # Giao diện Streamlit
+                st.markdown("---")
+                st.markdown("### 📊 **Phân cụm DBSCAN với dữ liệu cố định**")
+
+                # Thêm các tham số cho DBSCAN với giá trị mặc định phù hợp hơn
+                eps = st.slider("Khoảng cách tối đa (eps):", 0.1, 2.0, 0.5, 0.1)  # Giảm giá trị mặc định từ 0.90 xuống 0.5
+                min_samples = st.number_input("Số điểm tối thiểu (min_samples):", min_value=1, max_value=50, value=10)  # Tăng giá trị mặc định từ 5 lên 10
+
+                # Hiển thị nút để tạo và hiển thị phân cụm
+                if st.button("Hiển thị dữ liệu và phân cụm"):
+                    # Hiển thị dữ liệu gốc
+                    st.write("### Dữ liệu gốc (3 cụm):")
+                    for i in range(len(X)):
+                        point = X[i]
+                        cluster = original_label[i]
+                        # st.write(f"Điểm {point} thuộc cụm {cluster}")
+                    
+                    # Hiển thị biểu đồ phân cụm ban đầu
+                    fig = dbscan_display(X, original_label)  # Hiển thị dữ liệu gốc
+                    st.pyplot(fig)
+                    
+                    # Thực hiện DBSCAN và hiển thị kết quả
+                    dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(X)
+                    dbscan_labels = dbscan.labels_
+                    
+                    st.write("### Kết quả phân cụm DBSCAN:")
+                    for i in range(len(X)):
+                        point = X[i]
+                        cluster = dbscan_labels[i]
+                        if cluster == -1:
+                            cluster_text = "Noise"
+                        else:
+                            cluster_text = f"Cụm {cluster}"
+                        # st.write(f"Điểm {point} thuộc {cluster_text}")
+                    
+                    # Hiển thị biểu đồ phân cụm DBSCAN
+                    fig = dbscan_display(X, dbscan_labels)  # Hiển thị kết quả DBSCAN
+                    st.pyplot(fig)
+
+
+
+
+                st.markdown("---")
+                st.markdown("### 👍 **Ưu điểm**")
+                st.write("""
+                - Không cần xác định trước số lượng cụm.
+                - Phát hiện tự động các điểm nhiễu (outlier).
+                - Hiệu quả với các cụm có hình dạng bất kỳ (không cần giả định hình cầu như K-Means).
+                """)
+
+                st.markdown("### ⚠️ **Nhược điểm**")
+                st.write("""
+                - Nhạy cảm với tham số `eps` và `min_samples`: Chọn sai có thể dẫn đến kết quả không tối ưu.
+                - Hiệu suất giảm khi mật độ dữ liệu không đồng đều hoặc dữ liệu có chiều cao (curse of dimensionality).
+                - Tốn kém về tính toán với tập dữ liệu lớn (độ phức tạp \( O(n^2) \) nếu không dùng chỉ mục không gian).
+                """)
+
+
+
+
     with tab_info:
         with st.expander("**Thông tin dữ liệu**", expanded=True):
             st.markdown(
@@ -160,391 +486,301 @@ def run_ClusteringMinst_app():
             sample_size = 10_000  
             pixel_sample = np.random.choice(train_images.flatten(), sample_size, replace=False)
 
-
+ 
 
     with tab_load:
-        with st.expander("**Xử lý dữ liệu**", expanded=True):    
-            # Chuyển đổi dữ liệu thành vector 1 chiều
-            X_train = st.session_state.train_images.reshape(st.session_state.train_images.shape[0], -1)
-            X_test = st.session_state.test_images.reshape(st.session_state.test_images.shape[0], -1)
-            y_train = train_labels
-            y_test = test_labels
+        with st.expander("**Xử lý dữ liệu**", expanded=True):
+            # Kiểm tra dữ liệu trong session_state
+            if "train_images" in st.session_state and "train_labels" in st.session_state:
+                # Chuyển đổi dữ liệu thành vector 1 chiều
+                try:
+                    X = st.session_state.train_images.reshape(st.session_state.train_images.shape[0], -1)
+                    y = st.session_state.train_labels  # Nhãn (0-9)
 
-            # Chọn tỷ lệ tập validation
-            val_size = st.slider("🔹 **Chọn tỷ lệ tập validation (%)**", min_value=10, max_value=50, value=20, step=5) / 100
+                    # Kiểm tra kích thước của X và y
+                    if len(X) != len(y):
+                        st.error("🚨 Kích thước của dữ liệu và nhãn không khớp. Vui lòng kiểm tra dữ liệu đầu vào.")
+                        st.stop()
 
-            # Chọn tỷ lệ tập kiểm tra (test)
-            test_size = st.slider("🔹 **Chọn tỷ lệ tập kiểm tra (%)**", min_value=10, max_value=40, value=20, step=5) / 100
+                    # Chọn tỷ lệ tập Test (%)
+                    test_size = st.slider("🔹 **Chọn tỷ lệ tập Test (%)**", min_value=10, max_value=90, value=20, step=5) / 100
 
-            # Chia tập train ban đầu thành train + validation + test
-            X_train, X_temp, y_train, y_temp = train_test_split(X_train, y_train, test_size=(val_size + test_size), random_state=42)
+                    # Tính tỷ lệ tập Train tự động
+                    train_size = 1.0 - test_size  # Tự động tính tỷ lệ train
 
-            # Tiếp tục chia X_temp thành validation và test theo tỷ lệ đã chọn
-            X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=(test_size / (val_size + test_size)), random_state=42)
+                    # Chia tập dữ liệu thành Train và Test
+                    X_train_final, X_test_final, y_train_final, y_test_final = train_test_split(
+                        X, y, test_size=test_size, random_state=42, stratify=y  # Thêm stratify để giữ tỷ lệ nhãn
+                    )
 
-            st.session_state.X_train = X_train
-            st.session_state.X_val = X_val
-            st.session_state.X_test = X_test
+                    # Lưu vào session_state
+                    st.session_state.X_train = X_train_final
+                    st.session_state.X_test = X_test_final
+                    st.session_state.y_train = y_train_final
+                    st.session_state.y_test = y_test_final
 
+                    # Tính tổng số mẫu
+                    total_samples = len(X)
+                    train_samples = len(X_train_final)
+                    test_samples = len(X_test_final)
 
-            st.write("✅ Dữ liệu đã được xử lý và chia tách.")
-            st.write(f"🔹 **Kích thước tập huấn luyện**: `{X_train.shape}`")
-            st.write(f"🔹 **Kích thước tập validation**: `{X_val.shape}`")
-            st.write(f"🔹 **Kích thước tập kiểm tra**: `{X_test.shape}`")
+                    # Tính tỷ lệ thực tế (%)
+                    train_ratio = (train_samples / total_samples) * 100
+                    test_ratio = (test_samples / total_samples) * 100
 
-            # Biểu đồ phân phối nhãn trong tập huấn luyện
-            fig, ax = plt.subplots(figsize=(6, 4))
-            sns.barplot(x=list(Counter(y_train).keys()), y=list(Counter(y_train).values()), palette="Blues", ax=ax)
-            ax.set_title("Phân phối nhãn trong tập huấn luyện")
-            ax.set_xlabel("Nhãn")
-            ax.set_ylabel("Số lượng")
-            st.pyplot(fig)
-
-    with tab_note:
-        with st.expander("**Thông tin mô hình**", expanded=True):
-            # Chọn mô hình
-            model_option1 = st.selectbox("Chọn mô hình", ["K-Means", "DBSCAN"])
+                    # Hiển thị thông báo và tỷ lệ phân chia
+                    st.write(f"📊 **Tỷ lệ phân chia**: Test={test_ratio:.0f}% , Train={train_ratio:.0f}%")
+                    st.write("✅ Dữ liệu đã được xử lý và chia tách.")
+                    st.write(f"🔹 **Kích thước tập Train**: `{X_train_final.shape}`")
+                    st.write(f"🔹 **Kích thước tập Test**: `{X_test_final.shape}`")
+                except Exception as e:
+                    st.error(f"🚨 Lỗi khi xử lý dữ liệu: {str(e)}")
+            else:
+                st.error("🚨 Dữ liệu chưa được tải! Vui lòng tải dữ liệu trước khi xử lý.")
             
-            if model_option1 == "K-Means":
-                st.markdown("## 🔹 K-Means Clustering")
-                st.markdown("---")
-
-                st.markdown("**Khái niệm**")
-                st.write("""
-                - **K-Means** là thuật toán phân cụm chia dữ liệu thành $K$ nhóm dựa trên khoảng cách giữa các điểm và tâm cụm.
-                - Thuật toán tìm cách **tối thiểu hóa tổng bình phương khoảng cách** giữa các điểm dữ liệu và tâm cụm (**WCSS**).
-                """)
-
-                st.markdown("### 🔄 **Quy trình hoạt động**")
-                st.write("""
-                1. Chọn ngẫu nhiên $K$ tâm cụm ban đầu.
-                2. Gán mỗi điểm vào cụm gần nhất dựa trên khoảng cách.
-                3. Cập nhật lại tâm cụm bằng trung bình của các điểm trong cụm.
-                4. Lặp lại cho đến khi thuật toán hội tụ.
-                """)
-
-                st.markdown("### ⚙️ **Các tham số chính**")
-                st.write("""
-                - **Số cụm $K$**: Số lượng cụm cần phân loại.
-                - **init method**:
-                    - `"random"`: Chọn tâm cụm ngẫu nhiên.
-                    - `"k-means++"`: Chọn tâm cụm thông minh hơn để tăng tốc hội tụ.
-                - **max_iter**: Số lần lặp tối đa trước khi thuật toán dừng.
-                """)
-                st.markdown("### 🤔 **Tại sao cần K-Means++?**")
-                st.write("""
-                - Trong **K-Means**, nếu chọn tâm cụm ban đầu **ngẫu nhiên không tốt**, thuật toán có thể:
-                    - Hội tụ chậm hoặc mắc kẹt vào nghiệm kém tối ưu.
-                    - Tạo cụm không cân đối.
-                    - Nhạy cảm với outlier.
-                - **K-Means++** giúp chọn tâm cụm **một cách thông minh hơn**, giúp thuật toán **hội tụ nhanh hơn và ổn định hơn**.
-                - **K-Means++** là một cải tiến của thuật toán K-Means nhằm chọn tâm cụm ban đầu một cách thông minh hơn, giúp tăng độ ổn định và giảm nguy cơ hội tụ vào nghiệm kém tối ưu.
-                """)
-
-                st.markdown("### ✅ **Điều kiện hội tụ**")
-                st.write("""
-                - Tâm cụm không thay đổi giữa các vòng lặp.
-                - Gán cụm của các điểm không thay đổi.
-                - Số lần lặp đạt `max_iter`.
-                - Tổng bình phương khoảng cách không giảm đáng kể.
-                """)
-
-                st.markdown("### 👍 **Ưu điểm**")
-                st.write("""
-                - Dễ hiểu, dễ triển khai.
-                - Hiệu suất cao với dữ liệu lớn.
-                """)
-
-                st.markdown("### ⚠️ **Nhược điểm**")
-                st.write("""
-                - Cần chọn trước số cụm $K$.
-                - Nhạy cảm với nhiễu và outlier.
-                - Không hiệu quả nếu cụm có hình dạng bất thường.
-                """)
-
-            elif model_option1 == "DBSCAN":
-                st.markdown("## 🔹 DBSCAN (Density-Based Clustering)")
-                st.markdown("---")
-
-                st.markdown("**Khái niệm**")
-                st.write("""
-                - DBSCAN là thuật toán phân cụm dựa trên mật độ, hoạt động tốt với dữ liệu có hình dạng cụm phức tạp.
-                - Không cần chọn số cụm trước, mà dựa vào mật độ dữ liệu.
-                """)
-
-                st.markdown("### 🔄 **Quy trình hoạt động**")
-                st.write("""
-                1. Chọn một điểm dữ liệu chưa được phân cụm.
-                2. Nếu trong bán kính `eps` có ít nhất `min_samples` điểm, thuật toán tạo một cụm mới.
-                3. Mở rộng cụm bằng cách tìm điểm gần kề có mật độ cao.
-                4. Điểm nào không thuộc cụm nào được coi là **nhiễu (outlier)**.
-                """)
-
-                st.markdown("### ⚙️ **Các tham số chính**")
-                st.write("""
-                - **Epsilon (`eps`)**: Bán kính lân cận.
-                - **min_samples**: Số điểm tối thiểu để tạo cụm.
-                - **max_iter**: Số lần lặp tối đa trước khi thuật toán dừng.
-                - **metric**: Cách tính khoảng cách giữa các điểm:
-                    - `"euclidean"`: Khoảng cách Euclid.
-                    - `"manhattan"`: Khoảng cách Manhattan.
-                    - `"cosine"`: Khoảng cách Cosine.
-                """)
-
-                st.markdown("### 👍 **Ưu điểm**")
-                st.write("""
-                - Không cần chọn số cụm trước.
-                - Xử lý tốt dữ liệu có hình dạng cụm phức tạp.
-                - Tự động phát hiện outlier.
-                """)
-
-                st.markdown("### ⚠️ **Nhược điểm**")
-                st.write("""
-                - Nhạy cảm với giá trị `eps` và `min_samples`.
-                - Hiệu suất giảm với dữ liệu có mật độ không đồng nhất.
-                - Không hiệu quả với dữ liệu có số chiều cao.
-                """)
 
 
     with tab_preprocess:
-        with st.expander("**Kỹ thuật phân cụm**", expanded=True):    
-            st.write("***Phân cụm dữ liệu***")
+        st.write("***Phân cụm dữ liệu***")
+        if "X_train" in st.session_state and "X_test" in st.session_state:
+            # Lấy dữ liệu từ session_state (chỉ dùng X_train cho phân cụm)
+            X_train = st.session_state.X_train
+            X_test = st.session_state.X_test
 
-            if "X_train" in st.session_state and "X_val" in st.session_state and "X_test" in st.session_state:
-                # Lấy dữ liệu từ session_state
-                X_train = st.session_state.X_train
-                X_val = st.session_state.X_val
-                X_test = st.session_state.X_test
-                # Chuẩn hóa dữ liệu
-                    # Chuẩn hóa dữ liệu
-                scaler = StandardScaler()
-                X_train_scaled = scaler.fit_transform(X_train)
-                X_val_scaled = scaler.transform(X_val)
-                X_test_scaled = scaler.transform(X_test)
+            # Chuẩn hóa dữ liệu
+            scaler = StandardScaler()
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
 
-                    # Giảm chiều bằng PCA (2D) để trực quan hóa 
-                pca = PCA(n_components=2)
-                X_train_pca = pca.fit_transform(X_train_scaled)
-                    
-                    # Chọn phương pháp phân cụm
-                clustering_method = st.selectbox("🔹 Chọn phương pháp phân cụm:", ["K-means", "DBSCAN"])
+            # Giảm chiều bằng PCA (2D) để phân cụm
+            pca = PCA(n_components=2)
+            X_train_pca = pca.fit_transform(X_train_scaled)
 
-                if clustering_method == "K-means":
-                    k = st.slider("🔸 Số cụm (K-means)", min_value=2, max_value=20, value=10)
+            st.session_state.scaler = scaler
+            st.session_state.pca = pca
+            st.session_state.X_train_pca = X_train_pca
 
-                    init_method = st.selectbox("🔸 Phương pháp khởi tạo", ["k-means++", "random"])
-                    max_iter = st.slider("🔸 Số vòng lặp tối đa", min_value=100, max_value=500, value=300, step=50)
-                    if st.button("🚀 Chạy K-means"):
+            # Chọn phương pháp phân cụm
+            clustering_method = st.selectbox("🔹 Chọn phương pháp phân cụm:", ["K-means", "DBSCAN"])
+
+            if clustering_method == "K-means":
+                k = st.slider("🔸 Số cụm (K-means)", min_value=2, max_value=20, value=10)
+
+                if st.button("🚀 Chạy K-means"):
+                    with st.spinner("Đang huấn luyện mô hình..."):
                         with mlflow.start_run():
-                            kmeans = KMeans(n_clusters=k, init=init_method, max_iter=max_iter, random_state=42, n_init=10)
+                            # Đo thời gian bắt đầu
+                            start_time = time.time()
+
+                            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
                             labels = kmeans.fit_predict(X_train_pca)
+
+                            # Đo thời gian kết thúc và tính thời gian phân cụm
+                            end_time = time.time()
+                            clustering_time = round(end_time - start_time, 2)  # Làm tròn 2 chữ số thập phân
 
                             mlflow.log_param("algorithm", "K-means")
                             mlflow.log_param("k", k)
-                            mlflow.log_param("init_method", init_method)
-                            mlflow.log_param("max_iter", max_iter)    
+                            mlflow.log_param("max_iter", 300)
 
-                                # Log kết quả: Inertia (tổng bình phương khoảng cách)
-                            mlflow.log_metric("inertia", kmeans.inertia_)
-                                # Log mô hình K-means
+                            # Tính Inertia
+                            inertia = kmeans.inertia_
+                            max_possible_inertia = np.sum(np.sum((X_train_pca - np.mean(X_train_pca, axis=0)) ** 2))
+                            if max_possible_inertia > 0:
+                                accuracy_percentage = (1 - (inertia / max_possible_inertia)) * 100
+                            else:
+                                accuracy_percentage = 0.0
+                            accuracy_percentage = max(0.0, min(100.0, accuracy_percentage))
+                            accuracy_percentage = round(accuracy_percentage, 2)
+
+                            # Tính các thông tin bổ sung
+                            num_samples = X_train_pca.shape[0]  # Số mẫu đã xử lý
+                            num_clusters_actual = len(set(labels))  # Số cụm thực tế (trong trường hợp hiếm, có thể ít hơn k)
+
+                            mlflow.log_metric("inertia", inertia)
+
+                            # Hiển thị kết quả
+                            with st.container(border=True):
+                                st.write("### Kết quả phân cụm và thông tin của K-Means:")
+                                st.write(f"**Phương pháp phân cụm đã chọn:** K-means")
+                                st.write(f"**Số cụm đã chọn:** {k}")
+                                st.write(f"**Số cụm thực tế:** {num_clusters_actual}")
+                                st.write(f"**Số mẫu đã xử lý:** {num_samples}")
+                                st.write(f"**Thời gian phân cụm:** {clustering_time} giây")
+                                st.write(f"**Độ chính xác của phân cụm K-Means:** {accuracy_percentage:.2f}%")
+
+                            # Log mô hình K-means
                             mlflow.sklearn.log_model(kmeans, "kmeans_model")
+                            st.session_state.clustering_model = kmeans
+                            st.session_state.clustering_method = "K-means"
+                            st.session_state.labels = labels
 
-
-                                # Vẽ biểu đồ phân cụm
-                            fig, ax = plt.subplots(figsize=(6, 4))
-                            scatter = ax.scatter(X_train_pca[:, 0], X_train_pca[:, 1], c=labels, cmap='tab10', alpha=0.5)
-                            ax.set_title(f"K-means với K={k}")
-                            legend1 = ax.legend(*scatter.legend_elements(), title="Clusters")
-                            ax.add_artist(legend1)
-                            st.pyplot(fig)
-
-                            fig.savefig("kmeans_clusters.png")
-                            mlflow.log_artifact("kmeans_clusters.png")
-
-                            st.markdown(
-                                """
-                                ### 📌 Giải thích biểu đồ phân cụm   
-                                - **Mỗi chấm trên đồ thị** 🟢🔵🟣: Đại diện cho một mẫu dữ liệu trong tập huấn luyện (ở đây có thể là dữ liệu MNIST hoặc một tập dữ liệu khác).  
-                                - **Màu sắc** 🎨:  
-                                    - Các màu sắc tượng trưng cho các cụm dữ liệu được tạo ra bởi thuật toán K-Means với K bằng số cụm được chọn.  
-                                    - Các điểm có cùng màu được nhóm lại vào cùng một cụm do K-Means phân cụm dựa trên khoảng cách trong không gian hai chiều.  
-                                - **Trục X và Y** 📉:  
-                                    - Đây là hai thành phần chính (principal components) được tạo ra bằng phương pháp PCA (Principal Component Analysis).  
-                                    - PCA giúp giảm chiều dữ liệu từ nhiều chiều xuống 2 chiều để trực quan hóa.  
-                                    - Giá trị trên trục X và Y có thể lên đến khoảng ±30, phản ánh sự phân bố dữ liệu sau khi PCA được áp dụng.  
-                                - **Chú thích (legend)** 🏷️: Hiển thị các cụm được tạo ra.  
-
-                                """
-                            )
                         mlflow.end_run()
 
-                elif clustering_method == "DBSCAN":
-                    eps = st.slider("🔸 Epsilon (DBSCAN)", min_value=0.1, max_value=5.0, value=1.0, step=0.1)
-                    max_iter = st.slider("🔸 Số vòng lặp tối đa", min_value=100, max_value=500, value=300, step=50)
-                    min_samples = st.slider("🔸 Min Samples (DBSCAN)", min_value=1, max_value=20, value=5)
-                    metric = st.selectbox("🔸 Khoảng cách (Metric)", ["euclidean", "manhattan", "cosine"])
+            elif clustering_method == "DBSCAN":
+                eps = st.slider("🔸 Bán kính vùng lân cận (eps):", min_value=0.1, max_value=5.0, value=0.5, step=0.1)
+                min_samples = st.slider("🔸 Số lượng điểm tối thiểu:", min_value=1, max_value=20, value=10)
 
-                    if st.button("🚀 Chạy DBSCAN"):
+                if st.button("🚀 Chạy DBSCAN"):
+                    with st.spinner("Đang huấn luyện mô hình DBSCAN..."):
                         with mlflow.start_run():
-                            dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
+                            # Đo thời gian bắt đầu
+                            start_time = time.time()
+
+                            dbscan = DBSCAN(eps=eps, min_samples=min_samples)
                             labels = dbscan.fit_predict(X_train_pca)
+
+                            # Đo thời gian kết thúc và tính thời gian phân cụm
+                            end_time = time.time()
+                            clustering_time = round(end_time - start_time, 2)
 
                             mlflow.log_param("algorithm", "DBSCAN")
                             mlflow.log_param("eps", eps)
                             mlflow.log_param("min_samples", min_samples)
-                            mlflow.log_param("metric", metric)
 
-                                # Log số lượng cụm tìm được (không tính noise)
+                            # Tính số lượng cụm (không tính noise, nhãn -1)
                             num_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+                            # Tính số lượng điểm nhiễu
+                            noise_points = np.sum(labels == -1)
+                            # Tính số mẫu đã xử lý
+                            num_samples = X_train_pca.shape[0]
+
+                            # Hiển thị kết quả
+                            with st.container(border=True):
+                                st.write("### Kết quả phân cụm và thông tin của DBSCAN:")
+                                st.write(f"**Phương pháp phân cụm đã chọn:** DBSCAN")
+                                st.write(f"**Số cụm đã chọn:** Không áp dụng (tự động xác định)")
+                                st.write(f"**Số cụm thực tế:** {num_clusters}")
+                                st.write(f"**Số mẫu đã xử lý:** {num_samples}")
+                                st.write(f"**Thời gian phân cụm:** {clustering_time} giây")
+                                st.write(f"**Số lượng điểm nhiễu (Noise Points):** {noise_points} ({round((noise_points / num_samples) * 100, 2)}%)")
+
+                            # Log các chỉ số vào MLflow
                             mlflow.log_metric("num_clusters", num_clusters)
+                            mlflow.log_metric("noise_points", noise_points)
+                            for cluster, count in Counter(labels).items():
+                                if cluster != -1:  # Bỏ qua nhãn -1 (noise)
+                                    mlflow.log_metric(f"cluster_{cluster}_size", count)
 
-                                # Log mô hình DBSCAN (Lưu ý: DBSCAN không có model serialization như KMeans)
+                            # Log mô hình DBSCAN
                             mlflow.sklearn.log_model(dbscan, "dbscan_model")
+                            st.session_state.clustering_model = dbscan
+                            st.session_state.clustering_method = "DBSCAN"
+                            st.session_state.labels = labels
 
-                                # Vẽ biểu đồ phân cụm
-                            ffig, ax = plt.subplots(figsize=(6, 4))
-                            scatter = ax.scatter(X_train_pca[:, 0], X_train_pca[:, 1], c=labels, cmap='tab10', alpha=0.5)
-                            ax.set_title(f"DBSCAN với eps={eps}, min_samples={min_samples}")
-                            legend1 = ax.legend(*scatter.legend_elements(), title="Clusters")
-                            ax.add_artist(legend1)
-                            st.pyplot(fig)
-
-                            fig.savefig("dbscan_clusters.png")
-                            mlflow.log_artifact("dbscan_clusters.png")
-                                
-                            st.markdown("""
-                                ### 📌 Giải thích biểu đồ phân cụm  
-                                - **Mỗi chấm trên đồ thị** 🟢🔵🟣:  
-                                - Mỗi chấm trên đồ thị biểu diễn một điểm dữ liệu, được tô màu theo cụm mà thuật toán xác định.  
-                                - Trục X và Y là không gian giảm chiều (có thể bằng PCA hoặc t-SNE).  
-
-                                - **Màu sắc** 🎨:  
-                                - Mỗi màu tượng trưng cho một cụm dữ liệu khác nhau.  
-                                - Vì có quá nhiều màu khác nhau, điều này cho thấy thuật toán đã chia dữ liệu thành quá nhiều cụm.  
-
-                                - **Trục X và Y** 📉:  
-                                - Trục X và Y dao động từ -10 đến khoảng 30, phản ánh sự phân bố dữ liệu.  
-                                - Điều này gợi ý rằng dữ liệu gốc có thể đã được giảm chiều trước khi phân cụm.  
-
-                                - **Chú thích (legend)** 🏷️:  
-                                - Các nhãn cụm cho thấy thuật toán DBSCAN đã tìm thấy rất nhiều cụm khác nhau.  
-                                - Điều này có thể là do tham số `eps` quá nhỏ, khiến thuật toán coi nhiều điểm dữ liệu riêng lẻ là một cụm riêng biệt.  
-                                """)
                         mlflow.end_run()
-            else:
-                st.error("🚨 Dữ liệu chưa được xử lý! Hãy đảm bảo bạn đã chạy phần tiền xử lý dữ liệu trước khi thực hiện phân cụm.")
-            
+        else:
+            st.error("🚨 Dữ liệu chưa được xử lý! Hãy đảm bảo bạn đã chạy phần tiền xử lý dữ liệu trước khi thực hiện phân cụm.")
 
-    with tab_split:
-        with st.expander(" Đánh giá hiệu suất mô hình phân cụm", expanded=True):
-            if "clustering_method" not in st.session_state:
-                st.session_state.clustering_method = "K-means"  # Giá trị mặc định
-                clustering_method = st.session_state.clustering_method  # Lấy giá trị từ session_state
-            if clustering_method == "K-means" and 'labels' in locals():
-                silhouette_avg = silhouette_score(X_train_pca, labels)
-                dbi_score = davies_bouldin_score(X_train_pca, labels)
+    with tab_demo:
+        with st.expander("**Dự đoán cụm cho ảnh**", expanded=False):
+            st.write("Tải lên ảnh chữ số viết tay (28x28 pixel, grayscale) để dự đoán cụm:")
 
-                st.markdown("### 📊 Đánh giá mô hình K-means")
-                st.write(f"✅ **Silhouette Score**: {silhouette_avg:.4f}")
-                st.write(f"✅ **Davies-Bouldin Index**: {dbi_score:.4f}")
+            # Kiểm tra và hiển thị thông tin phân cụm đã huấn luyện
+            if "clustering_method" in st.session_state and "clustering_model" in st.session_state:
+                clustering_method = st.session_state.clustering_method
+                model = st.session_state.clustering_model
+                num_samples = st.session_state.X_train_pca.shape[0] if "X_train_pca" in st.session_state else 0
+                clustering_time = st.session_state.get("clustering_time", "Không có dữ liệu")
 
-                # Vẽ biểu đồ Silhouette Score
-                fig, ax = plt.subplots(figsize=(6, 4))
-                sample_silhouette_values = silhouette_samples(X_train_pca, labels)
-                y_lower = 10
+                with st.container(border=True):
+                    st.write("### Thông tin phân cụm đã huấn luyện:")
+                    st.write(f"**Phương pháp phân cụm:** {clustering_method}")
+                    if clustering_method == "K-means":
+                        k = model.n_clusters  # Lấy số cụm từ mô hình K-means
+                        accuracy_percentage = st.session_state.get("accuracy_percentage", "Không có dữ liệu")
+                        num_clusters_actual = len(set(st.session_state.labels)) if "labels" in st.session_state else k
+                        st.write(f"**Số cụm đã chọn:** {k}")
+                        st.write(f"**Số cụm thực tế:** {num_clusters_actual}")
+                        st.write(f"**Số mẫu đã xử lý:** {num_samples}")
+                        # st.write(f"**Thời gian phân cụm:** {clustering_time} giây")
+                        # st.write(f"**Độ chính xác của phân cụm K-Means:** {accuracy_percentage}")
+                    elif clustering_method == "DBSCAN":
+                        labels = st.session_state.labels if "labels" in st.session_state else []
+                        num_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+                        noise_points = np.sum(labels == -1) if labels.size > 0 else 0
+                        st.write(f"**Số cụm thực tế:** {num_clusters}")
+                        st.write(f"**Số mẫu đã xử lý:** {num_samples}")
+                        st.write(f"**Số lượng điểm nhiễu (Noise Points):** {noise_points} ({round((noise_points / num_samples) * 100, 2)}%) ")
 
-                for i in range(k):
-                    ith_cluster_silhouette_values = sample_silhouette_values[labels == i]
-                    ith_cluster_silhouette_values.sort()
-                    size_cluster_i = ith_cluster_silhouette_values.shape[0]
-                    y_upper = y_lower + size_cluster_i
+                # Tải file ảnh
+                uploaded_file = st.file_uploader("Chọn ảnh (.png, .jpg, .jpeg)", type=["png", "jpg", "jpeg"], key="upload_predict")
 
-                ax.fill_betweenx(np.arange(y_lower, y_upper), 0, ith_cluster_silhouette_values, alpha=0.7)
-                ax.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-                y_lower = y_upper + 10
+                # Dự đoán nếu có ảnh được tải lên
+                if uploaded_file is not None:
+                    # Đọc và xử lý ảnh
+                    image = Image.open(uploaded_file).convert('L')  # Chuyển thành grayscale
+                    image = image.resize((28, 28))  # Đảm bảo kích thước 28x28
+                    image_array = np.array(image) / 255.0  # Chuẩn hóa về [0, 1]
+                    image_vector = image_array.reshape(1, -1)  # Chuyển thành vector 1 chiều (784 chiều)
 
-                ax.set_title("Biểu đồ Silhouette Score - K-means")
-                ax.set_xlabel("Silhouette Score")
-                ax.set_ylabel("Cụm")
-                ax.axvline(x=silhouette_avg, color="red", linestyle="--", label="Giá trị trung bình")
-                ax.legend()
+                    # Chuẩn hóa ảnh mới bằng scaler đã fit trên X_train
+                    if "scaler" in st.session_state:
+                        image_scaled = st.session_state.scaler.transform(image_vector)
+                    else:
+                        st.error("🚨 Scaler chưa được huấn luyện. Vui lòng chạy phân cụm trong tab 'Phân cụm dữ liệu' trước.")
+                        st.stop()
 
-                st.pyplot(fig)
+                    # Giảm chiều ảnh mới bằng PCA đã fit trên X_train
+                    if "pca" in st.session_state:
+                        image_pca = st.session_state.pca.transform(image_scaled)
+                    else:
+                        st.error("🚨 PCA chưa được huấn luyện. Vui lòng chạy phân cụm trong tab 'Phân cụm dữ liệu' trước.")
+                        st.stop()
 
-                    # Giải thích về biểu đồ
-                st.markdown("**Giải thích biểu đồ Silhouette Score**")
-                st.write("""
-                - **Trục hoành**: Silhouette Score (từ -1 đến 1).
-                - **Trục tung**: Các cụm được phát hiện.
-                - **Dải màu**: Độ rộng biểu thị số lượng điểm trong từng cụm.
-                - **Đường đứt đỏ**: Trung bình Silhouette Score của toàn bộ dữ liệu.
-                - **Silhouette Score âm**: Có thể một số điểm bị phân cụm sai.
-                """)
+                    # Kiểm tra xem mô hình phân cụm đã được huấn luyện chưa
+                    if "clustering_model" not in st.session_state or "clustering_method" not in st.session_state:
+                        st.error("🚨 Mô hình phân cụm chưa được huấn luyện. Vui lòng chạy phân cụm trong tab 'Phân cụm dữ liệu' trước.")
+                    else:
+                        clustering_method = st.session_state.clustering_method
+                        model = st.session_state.clustering_model
 
-            elif clustering_method == "DBSCAN" and 'labels' in locals():
-                unique_labels = set(labels)
-                if len(unique_labels) > 1:  # Tránh lỗi khi chỉ có 1 cụm hoặc toàn bộ điểm bị coi là nhiễu (-1)
-                    silhouette_avg = silhouette_score(X_train_pca, labels)
-                    dbi_score = davies_bouldin_score(X_train_pca, labels)
+                        if clustering_method == "K-means":
+                            # Dự đoán cụm cho ảnh mới dựa trên khoảng cách đến tâm cụm
+                            try:
+                                cluster_label = model.predict(image_pca)[0]
+                                with st.container(border=True):
+                                    st.write("### Kết quả dự đoán cho ảnh mới:")
+                                    st.write(f"Ảnh của bạn thuộc **Cụm {cluster_label}**")
+                                    st.image(image, caption="Ảnh được tải lên", width=100)
+                            except Exception as e:
+                                st.error(f"🚨 Lỗi khi dự đoán với K-means: {str(e)}")
 
-                    st.markdown("### 📊 Đánh giá mô hình DBSCAN")
-                    st.write(f"✅ **Silhouette Score**: {silhouette_avg:.4f}")
-                    st.write(f"✅ **Davies-Bouldin Index**: {dbi_score:.4f}")
+                        elif clustering_method == "DBSCAN":
+                            # Với DBSCAN, dự đoán dựa trên khoảng cách đến các điểm đã phân cụm
+                            if "X_train_pca" in st.session_state and "labels" in st.session_state:
+                                X_train_pca = st.session_state.X_train_pca
+                                labels = st.session_state.labels
 
-                    # Vẽ biểu đồ Silhouette Score
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    sample_silhouette_values = silhouette_samples(X_train_pca, labels)
-                    y_lower = 10
+                                distances = np.linalg.norm(X_train_pca - image_pca, axis=1)
+                                nearest_point_idx = np.argmin(distances)
+                                nearest_label = labels[nearest_point_idx]
 
-                    for i in unique_labels:
-                        if i == -1:  # Bỏ qua nhiễu
-                            continue
-                        ith_cluster_silhouette_values = sample_silhouette_values[labels == i]
-                        ith_cluster_silhouette_values.sort()
-                        size_cluster_i = ith_cluster_silhouette_values.shape[0]
-                        y_upper = y_lower + size_cluster_i
+                                with st.container(border=True):
+                                    st.write("### Kết quả dự đoán cho ảnh mới:")
+                                    if nearest_label == -1:
+                                        st.write("Ảnh của bạn được coi là **điểm nhiễu (Noise)**")
+                                    else:
+                                        st.write(f"Ảnh của bạn thuộc **Cụm {nearest_label}**")
+                                    st.image(image, caption="Ảnh được tải lên", width=100)
+                            else:
+                                st.error("🚨 Dữ liệu huấn luyện PCA hoặc nhãn chưa được lưu. Vui lòng chạy phân cụm trong tab 'Phân cụm dữ liệu' trước.")
+                                st.stop()
+    
+    # Giao diện Streamlit cho phần dự đoán
+    st.title("Dự đoán Cụm cho Ảnh Mới")
+    st.write("Tải lên ảnh chữ số viết tay (28x28 pixel, grayscale) để dự đoán cụm:")
 
-                        ax.fill_betweenx(np.arange(y_lower, y_upper), 0, ith_cluster_silhouette_values, alpha=0.7)
-                        ax.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-                        y_lower = y_upper + 10
+    # Tải file ảnh
+    uploaded_file = st.file_uploader("Chọn ảnh (.png, .jpg, .jpeg)", type=["png", "jpg", "jpeg"])
 
-                    ax.set_title("Biểu đồ Silhouette Score - DBSCAN")
-                    ax.set_xlabel("Silhouette Score")
-                    ax.set_ylabel("Cụm")
-                    ax.axvline(x=silhouette_avg, color="red", linestyle="--", label="Giá trị trung bình")
-                    ax.legend()
-
-                    st.pyplot(fig)
-
-                    # Giải thích chi tiết về biểu đồ Silhouette Score - DBSCAN
-                    st.markdown("**Giải thích biểu đồ Silhouette Score (DBSCAN)**")
-                    st.write("""
-                    - **Trục tung (Cụm - Cluster ID)**: Mỗi cụm được hiển thị với một dải màu.
-                    - **Trục hoành (Silhouette Score)**: Giá trị càng gần **1** thì phân cụm càng tốt, gần **0** là chồng chéo, âm là phân cụm kém.
-                    - **Đường đỏ nét đứt**: Silhouette Score trung bình của toàn bộ cụm.
-                    """)
-
-                    st.markdown("🔍 **Về các đường đen trong biểu đồ**")
-
-                    st.write("""
-                    - Đây là các điểm nhiễu (outliers) mà DBSCAN không thể gán vào cụm nào.
-                    - Trong DBSCAN, các điểm nhiễu được gán nhãn `-1`, nhưng không được hiển thị trên biểu đồ.
-                    - Tuy nhiên, một số điểm nhiễu có thể vẫn xuất hiện như **các vệt đen dọc**, do chúng có Silhouette Score gần giống nhau nhưng không thuộc bất kỳ cụm nào.
-
-                    **Điều này xảy ra khi:**
-                    - Số lượng điểm nhiễu lớn.
-                    - Silhouette Score của nhiễu không ổn định, khiến nhiều điểm có giá trị gần nhau.
-                    - Cụm có chất lượng kém, tức là thuật toán đang nhận diện rất nhiều điểm là nhiễu thay vì cụm rõ ràng.
-                    """)
-                else:
-                    st.warning("⚠️ DBSCAN chỉ tìm thấy 1 cụm hoặc tất cả điểm bị coi là nhiễu. Hãy thử điều chỉnh `eps` và `min_samples`.")
 
     with tab_mlflow:
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
             client = MlflowClient()
-            experiment_name = "MyExperiment"
-    
+            experiment_name = "Clustering"
+
             # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
             if experiment is None:
@@ -553,22 +789,22 @@ def run_ClusteringMinst_app():
             else:
                 experiment_id = experiment.experiment_id
                 st.info(f"Đang sử dụng experiment ID: {experiment_id}")
-    
+
             mlflow.set_experiment(experiment_name)
-    
+
             # Truy vấn các run trong experiment
             runs = client.search_runs(experiment_ids=[experiment_id])
-    
+
             # 1) Chọn và đổi tên Run Name
             st.subheader("Đổi tên Run")
             if runs:
                 run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
-                               for run in runs}
+                            for run in runs}
                 selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
-                                                          options=list(run_options.keys()), 
-                                                          format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 new_run_name = st.text_input("Nhập tên mới cho Run:", 
-                                             value=run_options[selected_run_id_for_rename].split(" - ")[0])
+                                            value=run_options[selected_run_id_for_rename].split(" - ")[0])
                 if st.button("Cập nhật tên Run"):
                     if new_run_name.strip():
                         client.set_tag(selected_run_id_for_rename, "mlflow.runName", new_run_name.strip())
@@ -577,47 +813,48 @@ def run_ClusteringMinst_app():
                         st.warning("Vui lòng nhập tên mới cho Run.")
             else:
                 st.info("Chưa có Run nào được log.")
-    
+
             # 2) Xóa Run
             st.subheader("Danh sách Run")
             if runs:
                 selected_run_id_to_delete = st.selectbox("", 
-                                                         options=list(run_options.keys()), 
-                                                         format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 if st.button("Xóa Run", key="delete_run"):
                     client.delete_run(selected_run_id_to_delete)
                     st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
                     st.experimental_rerun()  # Tự động làm mới giao diện
             else:
                 st.info("Chưa có Run nào để xóa.")
-    
+
             # 3) Danh sách các thí nghiệm
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
-                                               options=list(run_options.keys()), 
-                                               format_func=lambda x: run_options[x])
-    
+                                            options=list(run_options.keys()), 
+                                            format_func=lambda x: run_options[x])
+
                 # 4) Hiển thị thông tin chi tiết của Run được chọn
                 selected_run = client.get_run(selected_run_id)
                 st.write(f"**Run ID:** {selected_run_id}")
                 st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
-    
+
                 st.markdown("### Tham số đã log")
                 st.json(selected_run.data.params)
-    
+
                 st.markdown("### Chỉ số đã log")
                 metrics = {
-                    "Mean CV Score (R²)": selected_run.data.metrics.get("mean_cv_score", "N/A"),
-                    "Validation MSE": selected_run.data.metrics.get("validation_mse", "N/A"),
-                    "Validation R²": selected_run.data.metrics.get("validation_r2", "N/A"),
-                    "Validation Accuracy": selected_run.data.metrics.get("validation_accuracy", "N/A"),
-                    "Test MSE": selected_run.data.metrics.get("test_mse", "N/A"),
-                    "Test R²": selected_run.data.metrics.get("test_r2", "N/A"),
-                    "Test Accuracy": selected_run.data.metrics.get("test_accuracy", "N/A")
+                    "Algorithm": selected_run.data.params.get("algorithm", "N/A"),
+                    "K (for K-means)": selected_run.data.params.get("k", "N/A"),
+                    "Max Iter (for K-means)": selected_run.data.params.get("max_iter", "N/A"),
+                    "EPS (for DBSCAN)": selected_run.data.params.get("eps", "N/A"),
+                    "Min Samples (for DBSCAN)": selected_run.data.params.get("min_samples", "N/A"),
+                    "Inertia (for K-means)": selected_run.data.metrics.get("inertia", "N/A"),
+                    "Num Clusters (for DBSCAN)": selected_run.data.metrics.get("num_clusters", "N/A"),
+                    "Noise Points (for DBSCAN)": selected_run.data.metrics.get("noise_points", "N/A")
                 }
                 st.json(metrics)
-    
+
                 # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
                 mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
@@ -625,9 +862,9 @@ def run_ClusteringMinst_app():
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
                 st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
-    
+
         except Exception as e:
-            st.error(f"Không thể kết nối với MLflow: {e}")    
+            st.error(f"Không thể kết nối với MLflow: {e}")
 
 if __name__ == "__main__":
     run_ClusteringMinst_app()    
@@ -640,3 +877,7 @@ if __name__ == "__main__":
 
 
 # # # # cd "C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\BaiThucHanh4"
+
+
+
+
