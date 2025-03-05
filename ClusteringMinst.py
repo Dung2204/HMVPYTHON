@@ -766,13 +766,7 @@ def run_ClusteringMinst_app():
                             else:
                                 st.error("🚨 Dữ liệu huấn luyện PCA hoặc nhãn chưa được lưu. Vui lòng chạy phân cụm trong tab 'Phân cụm dữ liệu' trước.")
                                 st.stop()
-    
-    # Giao diện Streamlit cho phần dự đoán
-    st.title("Dự đoán Cụm cho Ảnh Mới")
-    st.write("Tải lên ảnh chữ số viết tay (28x28 pixel, grayscale) để dự đoán cụm:")
 
-    # Tải file ảnh
-    uploaded_file = st.file_uploader("Chọn ảnh (.png, .jpg, .jpeg)", type=["png", "jpg", "jpeg"])
 
 
     with tab_mlflow:
