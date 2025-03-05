@@ -3,25 +3,24 @@ import os
 import cv2
 import numpy as np
 import pandas as pd
-import pickle
 import seaborn as sns
 import random
 import struct
-import altair
-from sklearn.cluster import KMeans, DBSCAN
+from scipy.interpolate import UnivariateSpline
+import plotly.graph_objects as go
 from sklearn.decomposition import PCA
 import mlflow
 from sklearn.metrics import silhouette_score, silhouette_samples, davies_bouldin_score
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import pairwise_distances
 from sklearn.svm import SVC
 from sklearn.manifold import TSNE
-from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay
+import plotly.express as px
 from PIL import Image
 from collections import Counter
+from sklearn.datasets import make_classification
 from mlflow.tracking import MlflowClient
 
 def run_PcaTSNEMinst_app():
@@ -64,36 +63,66 @@ def run_PcaTSNEMinst_app():
 
     # Định nghĩa đường dẫn đến các file MNIST
     # dataset_path = r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App"
-    dataset_path = os.path.dirname(os.path.abspath(__file__)) 
+    dataset_path = os.path.dirname(os.path.abspath(__file__))
     train_images_path = os.path.join(dataset_path, "train-images.idx3-ubyte")
     train_labels_path = os.path.join(dataset_path, "train-labels.idx1-ubyte")
     test_images_path = os.path.join(dataset_path, "t10k-images.idx3-ubyte")
     test_labels_path = os.path.join(dataset_path, "t10k-labels.idx1-ubyte")
 
-    if "train_images" not in st.session_state:
-            st.session_state.train_images = load_mnist_images(train_images_path)
-            st.session_state.train_labels = load_mnist_labels(train_labels_path)
-            st.session_state.test_images = load_mnist_images(test_images_path)
-            st.session_state.test_labels = load_mnist_labels(test_labels_path)
-    # Tải dữ liệu
-    train_images = load_mnist_images(train_images_path)
-    train_labels = load_mnist_labels(train_labels_path)
-    test_images = load_mnist_images(test_images_path)
-    test_labels = load_mnist_labels(test_labels_path)
+    # Định nghĩa hàm để đọc file .idx
+    def load_mnist_images(filename):
+        with open(filename, 'rb') as f:
+            magic, num, rows, cols = struct.unpack('>IIII', f.read(16))
+            images = np.fromfile(f, dtype=np.uint8).reshape(num, rows, cols)
+        return images
+
+    def load_mnist_labels(filename):
+        with open(filename, 'rb') as f:
+            magic, num = struct.unpack('>II', f.read(8))
+            labels = np.fromfile(f, dtype=np.uint8)
+        return labels
+
+    # Tải dữ liệu MNIST
+    try:
+        train_images = load_mnist_images(train_images_path)
+        train_labels = load_mnist_labels(train_labels_path)
+        test_images = load_mnist_images(test_images_path)
+        test_labels = load_mnist_labels(test_labels_path)
+
+        st.session_state.train_images = train_images
+        st.session_state.train_labels = train_labels
+        st.session_state.test_images = test_images
+        st.session_state.test_labels = test_labels
+    except FileNotFoundError as e:
+        st.error(f"⚠️ Lỗi: Không tìm thấy file dữ liệu MNIST. Kiểm tra đường dẫn: {e}")
+        return
+    except Exception as e:
+        st.error(f"⚠️ Lỗi khi tải dữ liệu MNIST: {e}")
+        return
+
+    # Chuẩn bị dữ liệu cho giảm chiều (reshape images thành vector)
+    X_train = train_images.reshape(train_images.shape[0], -1)  # Chuyển 28x28 thành vector 784
+    X_test = test_images.reshape(test_images.shape[0], -1)     # Tương tự cho test
+    y_train = train_labels                                    # Nhãn huấn luyện
+    y_test = test_labels                                      # Nhãn kiểm tra
+
+    # Lưu vào session_state để sử dụng sau
+    st.session_state.X_train = X_train
+    st.session_state.X_test = X_test
+    st.session_state.y_train = y_train
+    st.session_state.y_test = y_test
 
     
 
     # Giao diện Streamlit
     st.title("📸 MNIST PCA_T-SNE")
     tabs = st.tabs([
-            "Tập dữ liệu",
-            "Xử lí dữ liệu",
             "Thông tin",
+            "Tập dữ liệu",
             "kỹ thuật thu gọn chiều",
-            "Đánh giá mô hình",
             "Thông tin & Mlflow",
     ])
-    tab_info, tab_load,tab_note, tab_preprocess, tab_split ,tab_mlflow= tabs
+    tab_note, tab_info, tab_preprocess ,tab_mlflow= tabs
     with tab_info:
         with st.expander("**Thông tin dữ liệu**", expanded=True):
             st.markdown(
@@ -165,318 +194,477 @@ def run_PcaTSNEMinst_app():
 
 
 
-    with tab_load:
-        with st.expander("**Xử lý dữ liệu**", expanded=True):    
-            # Chuyển đổi dữ liệu thành vector 1 chiều
-            X_train = st.session_state.train_images.reshape(st.session_state.train_images.shape[0], -1)
-            X_test = st.session_state.test_images.reshape(st.session_state.test_images.shape[0], -1)
-            y_train = train_labels
-            y_test = test_labels
-
-            # Chọn tỷ lệ tập validation
-            val_size = st.slider("🔹 **Chọn tỷ lệ tập validation (%)**", min_value=10, max_value=50, value=20, step=5) / 100
-
-            # Chọn tỷ lệ tập kiểm tra (test)
-            test_size = st.slider("🔹 **Chọn tỷ lệ tập kiểm tra (%)**", min_value=10, max_value=40, value=20, step=5) / 100
-
-            # Chia tập train ban đầu thành train + validation + test
-            X_train, X_temp, y_train, y_temp = train_test_split(X_train, y_train, test_size=(val_size + test_size), random_state=42)
-
-            # Tiếp tục chia X_temp thành validation và test theo tỷ lệ đã chọn
-            X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=(test_size / (val_size + test_size)), random_state=42)
-
-            st.session_state.X_train = X_train
-            st.session_state.X_val = X_val
-            st.session_state.X_test = X_test
-
-
-            st.write("✅ Dữ liệu đã được xử lý và chia tách.")
-            st.write(f"🔹 **Kích thước tập huấn luyện**: `{X_train.shape}`")
-            st.write(f"🔹 **Kích thước tập validation**: `{X_val.shape}`")
-            st.write(f"🔹 **Kích thước tập kiểm tra**: `{X_test.shape}`")
-
-            # Biểu đồ phân phối nhãn trong tập huấn luyện
-            fig, ax = plt.subplots(figsize=(6, 4))
-            sns.barplot(x=list(Counter(y_train).keys()), y=list(Counter(y_train).values()), palette="Blues", ax=ax)
-            ax.set_title("Phân phối nhãn trong tập huấn luyện")
-            ax.set_xlabel("Nhãn")
-            ax.set_ylabel("Số lượng")
-            st.pyplot(fig)
+    
 
     with tab_note:
         with st.expander("**Thông tin mô hình**", expanded=True):
-            # Chọn mô hình*
+            # Chọn mô hình
             model_option1 = st.selectbox("Chọn mô hình", ["PCA (Principal Component Analysis)", "T-SNE (t-Distributed Stochastic Neighbor Embedding)"])
             
             if model_option1 == "PCA (Principal Component Analysis)":
                 st.markdown("## 🔹 PCA (Principal Component Analysis)")
                 st.markdown("---")
-                st.markdown("### PCA - Phân tích thành phần chính")
-                st.write(
-                    "**PCA (Principal Component Analysis)** là một kỹ thuật giảm chiều dữ liệu tuyến tính, giúp chuyển đổi dữ liệu có nhiều chiều "
-                    "thành một tập hợp nhỏ hơn các thành phần chính có thể giữ lại nhiều nhất thông tin gốc. "
-                    "PCA hoạt động bằng cách tìm các hướng có phương sai lớn nhất của dữ liệu, sau đó chiếu dữ liệu lên các hướng đó."
-                )
-                st.markdown("### Tham số quan trọng của PCA")
-                st.write("**Tham số `n_components`:**")
-                st.write("- Xác định số lượng thành phần chính cần giữ lại.")
-                st.write("- Nếu `n_components=k`, PCA giữ lại **k thành phần chính**.")
-                st.write("- Nếu `n_components=None`, giữ lại toàn bộ dữ liệu.")
-                st.write("- Có thể chọn `n_components=0.95` để giữ lại 95% phương sai.")
-                st.markdown("**Tham số `svd_solver`:**")
-                st.write("- Xác định thuật toán SVD để tính PCA.")
-                st.write("- Các giá trị: `'auto'`, `'full'`, `'arpack'`, `'randomized'`.")
-                st.write("- Thường dùng `'randomized'` khi dữ liệu lớn để tăng tốc.")
-                st.markdown("**Tham số `whiten`:**")
-                st.write("- Nếu `whiten=True`, PCA chuẩn hóa dữ liệu để phương sai mỗi thành phần chính = 1.")
-                st.write("- Hữu ích khi cần dữ liệu có dạng chuẩn tắc hơn.")
-
+                st.markdown("### Khái niệm PCA (Principal Component Analysis)")
+                st.markdown(
+                """
+                - **PCA (Principal Component Analysis)** là một kỹ thuật giảm chiều dữ liệu tuyến tính, giúp chuyển đổi dữ liệu nhiều chiều
+                    thành một tập hợp nhỏ hơn các thành phần chính, giữ lại phần lớn thông tin (phương sai) của dữ liệu gốc. "
+                - **PCA** hoạt động bằng cách tìm các hướng có phương sai lớn nhất và chiếu dữ liệu lên các hướng đó."
+                """)
+                st.markdown("---")
                 st.markdown("### Các bước thu gọn chiều với PCA")
-                st.write("1. **Chuẩn hóa dữ liệu**: Đưa dữ liệu về cùng một thang đo (`mean` = 0, `variance` = 1).")
+                st.write("1. **Chuẩn hóa dữ liệu**: Đưa dữ liệu về dạng chuẩn (trung bình = 0, phương sai = 1).")
                 st.write("2. **Tính ma trận hiệp phương sai**: Đánh giá sự tương quan giữa các biến.")
-                st.write("3. **Tính giá trị riêng và vector riêng**: Tìm các thành phần chính dựa trên các vector riêng.")
-                st.write("4. **Chọn số lượng thành phần chính**: Giữ lại các thành phần chính có giá trị riêng lớn nhất.")
-                st.write("5. **Chiếu dữ liệu vào không gian mới**: Biểu diễn dữ liệu trong hệ trục mới có ít chiều hơn.")
+                st.write("3. **Phân tích giá trị riêng và vector riêng**: Tìm các thành phần chính từ ma trận hiệp phương sai.")
+                st.write("4. **Chọn thành phần chính**: Sắp xếp theo giá trị riêng giảm dần và giữ lại số lượng mong muốn.")
+                st.write("5. **Chiếu dữ liệu**: Chuyển dữ liệu sang không gian mới ít chiều hơn.")
+                st.markdown("---")
                 
+                st.markdown("### Công thức toán học")
+                st.markdown("""**Công thức giảm chiều PCA (Principal Component Analysis):**""")
+                st.latex(r"X_{PCA} = X_{std} V_k")
+                st.markdown("""
+                **Trong đó:**
+                - $$( X_{std} )$$: Ma trận dữ liệu đã chuẩn hóa.  
+                - $$( V_k )$$: Ma trận các vector riêng (eigenvectors) tương ứng với $$( k )$$ giá trị riêng lớn nhất của ma trận hiệp phương sai $$( C )$$. Các vector này đại diện cho các thành phần chính.  
+                - Kết quả $$( X_{PCA} )$$ là ma trận dữ liệu đã được chiếu lên không gian của các thành phần chính, giúp giảm chiều dữ liệu mà vẫn giữ được phần lớn thông tin. Công thức này cũng đúng, nhưng cần đảm bảo $$( V_k )$$ được tính chính xác từ ma trận hiệp phương sai.
+                """)
+                st.markdown("""**Tính ma trận hiệp phương sai (Covariance Matrix Formula):**)""")
+                st.latex(r"C = \frac{1}{n-1} X_{std}^T X_{std}")
+                st.markdown("""  
+                **Trong đó:** 
+                - $$( X_{std} )$$: Ma trận dữ liệu đã được chuẩn hóa (mỗi cột là một biến đã chuẩn hóa).  
+                - $$( X_{std}^T )$$: Ma trận chuyển vị của $$( X_{std} )$$.  
+                - $$( n )$$: Số mẫu (số hàng trong ma trận $$( X_{std} ))$$.  
+                """)
+                st.markdown("---")
+                
+
+                X, y = make_classification(
+                    n_features=6,
+                    n_classes=3,
+                    n_samples=1500,
+                    n_informative=2,
+                    random_state=42,  # Thay đổi random_state để tạo phân bố phù hợp
+                    n_clusters_per_class=1
+                )
+
+                # Áp dụng PCA để giảm chiều xuống 2D (vì hình ảnh trông giống 2D)
+                pca = PCA(n_components=2)
+                X_pca = pca.fit_transform(X)
+
+                # Tiêu đề và đường phân cách
+                X, y = make_classification(
+                    n_features=6,
+                    n_classes=3,
+                    n_samples=1500,
+                    n_informative=2,
+                    random_state=42,  # Thay đổi random_state để tạo phân bố phù hợp
+                    n_clusters_per_class=1
+                )
+
+                # Áp dụng PCA để giảm chiều xuống 3D (hỗ trợ cả 2D và 3D)
+                pca = PCA(n_components=3)  # Giảm xuống 3 thành phần chính để hỗ trợ cả 2D và 3D
+                X_pca = pca.fit_transform(X)
+
+                # Tiêu đề và đường phân cách
+                st.markdown("---")
+                st.markdown("### Biểu đồ PCA với Đường Xu hướng")
+
+                # Cho phép người dùng chọn loại biểu đồ (2D hoặc 3D)
+                chart_type = st.selectbox("Chọn loại biểu đồ:", ["2D", "3D"])
+
+                # Hiển thị thông tin về dữ liệu
+                st.markdown("**Thông tin dữ liệu:**")
+                st.write(f"- Số mẫu (n_samples): {X.shape[0]}")
+                st.write(f"- Số đặc trưng (n_features): {X.shape[1]}")
+                st.write(f"- Số lớp (n_classes): {len(np.unique(y))}")
+
+                # Hiển thị tỷ lệ phương sai được giải thích bởi PCA
+                st.markdown("**Tỷ lệ phương sai được giải thích bởi các thành phần chính:**")
+                explained_variance_ratio = pca.explained_variance_ratio_
+                st.write(f"- Thành phần 1 (PC1): {explained_variance_ratio[0]:.4f}")
+                st.write(f"- Thành phần 2 (PC2): {explained_variance_ratio[1]:.4f}")
+                st.write(f"- Thành phần 3 (PC3): {explained_variance_ratio[2]:.4f}")
+                st.write(f"- Tổng phương sai được giữ lại: {sum(explained_variance_ratio):.4f}")
+
+                # Tạo và hiển thị biểu đồ dựa trên lựa chọn của người dùng
+                if chart_type == "3D":
+                    # Biểu đồ 3D
+                    fig = px.scatter_3d(
+                        x=X_pca[:, 0],  # Thành phần chính 1 (PC1) cho trục x
+                        y=X_pca[:, 1],  # Thành phần chính 2 (PC2) cho trục y
+                        z=X_pca[:, 2],  # Thành phần chính 3 (PC3) cho trục z
+                        color=y,        # Màu sắc dựa trên nhãn lớp (y)
+                        opacity=0.6,    # Độ trong suốt để giống hình ảnh
+                        title="Biểu đồ PCA 3D với Đường Xu hướng"
+                    )
+
+                    # Sắp xếp dữ liệu theo PC1 (x) để đảm bảo tăng dần cho đường xu hướng (chỉ sử dụng 2D cho đường xu hướng)
+                    sort_indices = np.argsort(X_pca[:, 0])
+                    x_sorted = X_pca[sort_indices, 0]  # PC1 đã sắp xếp
+                    y_sorted = X_pca[sort_indices, 1]  # PC2 tương ứng với PC1 đã sắp xếp
+
+                    # Tạo đường xu hướng bằng UnivariateSpline với dữ liệu đã sắp xếp (chỉ sử dụng PC1 và PC2)
+                    x_smooth = np.linspace(x_sorted.min(), x_sorted.max(), 100)
+                    y_smooth = UnivariateSpline(x_sorted, y_sorted, k=3, s=0)(x_smooth)  # Đặt s=0 để tránh lỗi
+
+                    # Thêm đường cong xanh lá cây vào biểu đồ 3D (dự đoán z=0 cho đơn giản)
+                    fig.add_trace(
+                        go.Scatter3d(
+                            x=x_smooth,
+                            y=y_smooth,
+                            z=np.zeros_like(x_smooth),  # Giả định z=0 cho đường xu hướng trong 3D
+                            mode='lines',
+                            line=dict(color='green', width=2),
+                            name='Đường xu hướng'
+                        )
+                    )
+
+                    st.markdown("### Biểu đồ 3D:")
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    # Biểu đồ 2D
+                    fig = px.scatter(
+                        x=X_pca[:, 0],  # Thành phần chính 1 (PC1) cho trục x
+                        y=X_pca[:, 1],  # Thành phần chính 2 (PC2) cho trục y
+                        color=y,        # Màu sắc dựa trên nhãn lớp (y)
+                        opacity=0.6,    # Độ trong suốt để giống hình ảnh
+                        title="Biểu đồ PCA 2D với Đường Xu hướng"
+                    )
+
+                    # Sắp xếp dữ liệu theo PC1 (x) để đảm bảo tăng dần
+                    sort_indices = np.argsort(X_pca[:, 0])
+                    x_sorted = X_pca[sort_indices, 0]  # PC1 đã sắp xếp
+                    y_sorted = X_pca[sort_indices, 1]  # PC2 tương ứng với PC1 đã sắp xếp
+
+                    # Tạo đường xu hướng bằng UnivariateSpline với dữ liệu đã sắp xếp
+                    x_smooth = np.linspace(x_sorted.min(), x_sorted.max(), 100)
+                    y_smooth = UnivariateSpline(x_sorted, y_sorted, k=3, s=0)(x_smooth)  # Đặt s=0 để tránh lỗi
+
+                    # Thêm đường cong xanh lá cây vào biểu đồ 2D
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x_smooth,
+                            y=y_smooth,
+                            mode='lines',
+                            line=dict(color='green', width=2),
+                            name='Đường xu hướng'
+                        )
+                    )
+
+                    st.markdown("### Biểu đồ 2D:")
+                    st.plotly_chart(fig, use_container_width=True)
+
+                # Cập nhật layout cho cả 2D và 3D (nền trắng, font đen)
+                fig.update_layout(
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    font_color='black',
+                    showlegend=True
+                )
+
+                st.markdown("---")
                 st.markdown("### Ưu điểm & Nhược điểm của PCA")
                 st.table({
                     "**Ưu điểm**": [
                         "Giảm chiều nhanh, hiệu quả với dữ liệu tuyến tính.",
-                        "Dễ triển khai, giữ lại thông tin quan trọng."
+                        "Dễ triển khai, giữ lại phần lớn thông tin quan trọng.",
+                        "Giảm thiểu đa cộng tuyến."
                     ],
                     "**Nhược điểm**": [
-                        "Không hoạt động tốt với dữ liệu phi tuyến tính.",
-                        "Mất một phần thông tin do nén dữ liệu."
+                        "Không hiệu quả với dữ liệu phi tuyến tính.",
+                        "Mất một phần thông tin do nén dữ liệu.",
+                        "Khó diễn giải ý nghĩa các thành phần chính."
                     ]
                 })
                 
             elif model_option1 == "T-SNE (t-Distributed Stochastic Neighbor Embedding)":
-                st.markdown("## 🔹 T-SNE (t-Distributed Stochastic Neighbor Embedding) ")
+                st.markdown("## 🔹 T-SNE (t-Distributed Stochastic Neighbor Embedding)")
                 st.markdown("---")
-                st.markdown("### T-SNE- Phân tích thành phần chính")
-                st.write(
-                    "**T-SNE (t-Distributed Stochastic Neighbor Embedding)** là một phương pháp giảm chiều dữ liệu phi tuyến tính, chuyên dùng để trực quan hóa dữ liệu có chiều cao. "
-                    "Nó hoạt động bằng cách giữ lại mối quan hệ cục bộ giữa các điểm dữ liệu và ánh xạ chúng vào không gian có chiều thấp hơn.")
+                st.markdown("### Khái niệm T-SNE (t-Distributed Stochastic Neighbor Embedding)")
+                st.markdown("""
+                - **T-SNE (t-Distributed Stochastic Neighbor Embedding)** là một kỹ thuật giảm chiều phi tuyến tính.
+                - chuyên dùng để trực quan hóa dữ liệu nhiều chiều trong không gian 2D hoặc 3D. 
+                - Nó giữ lại cấu trúc cục bộ của dữ liệu bằng cách tối ưu hóa sự tương đồng giữa các điểm trong không gian gốc và không gian thấp chiều.
+                """)
+            
+                st.markdown("---")
+                st.markdown("### Các bước thu gọn chiều với T-SNE")
+                st.write("1. **Tính độ tương đồng trong không gian gốc**: Dùng phân phối Gaussian để đo khoảng cách.")
+                st.write("2. **Tính độ tương đồng trong không gian thấp chiều**: Dùng phân phối t-Student để mô phỏng.")
+                st.write("3. **Tối ưu hóa hàm mất mát**: Dùng Gradient Descent để giảm KL Divergence.")
+                st.write("4. **Trực quan hóa**: Đưa dữ liệu về không gian 2D/3D.")
+                st.markdown("---")
+                st.markdown("### Công thức toán học")
+                st.markdown("**Công thức xác suất có điều kiện trong t-SNE (Conditional Probability Formula for t-SNE):**")
                 
-                st.markdown("### Tham số quan trọng của T-SNE")
+                st.latex(r"p_{j|i} = \frac{\exp(-||x_i - x_j||^2 / 2\sigma_i^2)}{\sum_{k \neq i} \exp(-||x_i - x_k||^2 / 2\sigma_i^2)}")
+                st.markdown("""
+                - **Ý nghĩa**: Tính xác suất có điều kiện $$( p_{j|i} )$$, thể hiện khả năng điểm dữ liệu $$( x_j )$$ là một "hàng xóm" của điểm $$( x_i )$$ trong không gian đầu vào (dữ liệu gốc, thường là không gian cao chiều).  
+                - **Trong đó:**
+                    - $$( x_i, x_j )$$: Các điểm dữ liệu trong không gian gốc.  
+                    - $$( ||x_i - x_j|| )$$: Khoảng cách Euclidean giữa $$( x_i )$$ và $$( x_j )$$.  
+                    - $$( \sigma_i )$$: Độ lệch chuẩn cục bộ, được điều chỉnh dựa trên mật độ dữ liệu xung quanh $$( x_i )$$.  
+                    - Công thức này sử dụng hàm Gaussian (bình thường) và thuộc về t-SNE, giúp mô hình hóa sự tương đồng giữa các điểm trong không gian dữ liệu gốc.
+                """)
+                st.markdown("**Công thức xác suất trong không gian nhúng thấp của t-SNE (Low-Dimensional Similarity Probability Formula for t-SNE):**")
+                # Công thức 2: Xác suất q_{ij} trong không gian nhúng thấp
+                st.latex(r"q_{ij} = \frac{(1 + ||y_i - y_j||^2)^{-1}}{\sum_{k \neq l} (1 + ||y_k - y_l||^2)^{-1}}")
+                st.markdown("""
+                - **Ý nghĩa**: Tính xác suất $$( q_{ij} )$$, thể hiện sự tương đồng giữa các điểm $$( y_i )$$ và $$( y_j )$$ trong không gian nhúng thấp chiều (thường là 2D hoặc 3D) sau khi giảm chiều.
+                - **Trong đó:**  
+                    - $$( y_i, y_j )$$: Các điểm trong không gian nhúng thấp.  
+                    - $$( ||y_i - y_j|| )$$: Khoảng cách Euclidean giữa $$( y_i )$$ và $$( y_j )$$.  
+                    - Công thức này sử dụng phân phối t-Student (với 1 bậc tự do, tương đương phân phối Cauchy) để mô hình hóa sự tương đồng, giúp giảm thiểu sự chồng lấn của các điểm trong không gian thấp chiều. Đây là một phần cốt lõi của t-SNE.
+                """)
+                st.markdown("**Hàm chi phí Kullback-Leibler divergence trong t-SNE (KL Divergence Cost Function for t-SNE):**")
+                # Công thức 3: Hàm chi phí (Cost Function) của t-SNE
+                st.latex(r"C = \sum_i \sum_j p_{ij} \log \frac{p_{ij}}{q_{ij}}")
+                st.markdown("""
+                - **Ý nghĩa**: Đây là hàm chi phí (cost function) hoặc hàm mất mát của t-SNE, đo lường sự khác biệt giữa phân phối xác suất $$( p_{ij} )$$ (từ không gian dữ liệu gốc) và $$( q_{ij} )$$ (từ không gian nhúng thấp).  
+                - **Trong đó:**
+                    - $$( p_{ij} )$$: Xác suất tương đồng từ không gian dữ liệu gốc .  
+                    - $$( q_{ij} )$$: Xác suất tương đồng trong không gian nhúng thấp.  
+                    - Hàm chi phí này sử dụng Kullback-Leibler (KL) divergence để tối ưu hóa, nhằm làm cho phân phối trong không gian nhúng thấp khớp với phân phối $$( p_{ij} )$$ trong không gian gốc càng gần càng tốt. Đây là một phần cốt lõi của t-SNE.
+                """)
 
-                st.markdown("**Tham số `n_components`:**")
-                st.write("- Xác định số chiều đầu ra (thường là **2 hoặc 3** để trực quan hóa).")
+                X, y = make_classification(
+                    n_features=6,
+                    n_classes=3,
+                    n_samples=1500,
+                    n_informative=2,
+                    random_state=5,
+                    n_clusters_per_class=1
+                )
 
-                st.markdown("**Tham số `perplexity`:**")
-                st.write("- Điều chỉnh số lượng hàng xóm quan trọng của mỗi điểm.")
-                st.write("- Giá trị hợp lý: **5 đến 50** (cần thử nghiệm để tối ưu).")
+                # Tiêu đề và đường phân cách
+                st.markdown("---")
+                st.markdown("### Biểu đồ Dữ liệu Phân loại với Plotly")
 
-                st.markdown("**Tham số `learning_rate`:**")
-                st.write("- Kiểm soát tốc độ cập nhật vị trí điểm dữ liệu.")
-                st.write("- Giá trị thường dùng: **10 - 1000** (mặc định là `200`).")
+                # Cho phép người dùng chọn loại biểu đồ (2D hoặc 3D)
+                chart_type = st.selectbox("Chọn loại biểu đồ:", ["2D", "3D"])
 
-                st.markdown("**Tham số `n_iter`:**")
-                st.write("- Số vòng lặp tối ưu hóa thuật toán.")
-                st.write("- Giá trị thường dùng: **1000 - 5000**.")
+                # Hiển thị thông tin về dữ liệu
+                st.markdown("### Thông tin dữ liệu:")
+                st.write(f"- Số mẫu (n_samples): {X.shape[0]}")
+                st.write(f"- Số đặc trưng (n_features): {X.shape[1]}")
+                st.write(f"- Số lớp (n_classes): {len(np.unique(y))}")
 
-                st.markdown("**Tham số `metric`:**")
-                st.write("- Xác định khoảng cách để tính độ tương đồng giữa điểm dữ liệu.")
-                st.write("- Mặc định là `'euclidean'`, có thể dùng `'cosine'`, `'manhattan'`, v.v.")
+                # Tạo và hiển thị biểu đồ dựa trên lựa chọn của người dùng
+                if chart_type == "3D":
+                    # Biểu đồ 3D
+                    fig = px.scatter_3d(
+                        x=X[:, 0],  # Sử dụng cột đầu tiên của X cho trục x
+                        y=X[:, 1],  # Sử dụng cột thứ hai của X cho trục y
+                        z=X[:, 2],  # Sử dụng cột thứ ba của X cho trục z
+                        color=y,    # Màu sắc dựa trên nhãn lớp (y)
+                        opacity=0.8 # Độ trong suốt
+                    )
+                    st.markdown("### Biểu đồ 3D:")
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    # Biểu đồ 2D (sử dụng 2 đặc trưng đầu tiên)
+                    fig = px.scatter(
+                        x=X[:, 0],  # Sử dụng cột đầu tiên của X cho trục x
+                        y=X[:, 1],  # Sử dụng cột thứ hai của X cho trục y
+                        color=y,    # Màu sắc dựa trên nhãn lớp (y)
+                        opacity=0.8 # Độ trong suốt
+                    )
+                    st.markdown("### Biểu đồ 2D:")
+                    st.plotly_chart(fig, use_container_width=True)
 
-                st.markdown("###  Các bước thu gọn chiều với T-SNE")
-                st.write("1. **Tính toán phân bố khoảng cách**: Sử dụng phân phối Gaussian ở không gian cao chiều.")
-                st.write("2. **Tính toán phân bố trong không gian thấp**: Sử dụng phân phối t-Student để duy trì quan hệ tương đồng.")
-                st.write("3. **Giảm thiểu hàm mất mát**: Điều chỉnh vị trí điểm dữ liệu để tối ưu sự tương đồng.")
-                st.write("4. **Trực quan hóa dữ liệu**: Hiển thị dữ liệu trong không gian 2D hoặc 3D.")
-                
-                st.markdown("###  Ưu điểm & Nhược điểm của T-SNE")
+
+                st.markdown("---")
+                st.markdown("### Ưu điểm & Nhược điểm của T-SNE")
                 st.table({
                     "**Ưu điểm**": [
-                        "Giữ lại tốt mối quan hệ cục bộ giữa các điểm.",
-                        "Hiệu quả khi trực quan hóa dữ liệu nhiều chiều."
+                        "Giữ lại tốt cấu trúc cục bộ của dữ liệu.",
+                        "Hiệu quả cho trực quan hóa dữ liệu phức tạp."
                     ],
                     "**Nhược điểm**": [
-                        "Chậm hơn PCA, không phù hợp cho dữ liệu lớn.",
-                        "Không thể dùng để biến đổi dữ liệu mới."
+                        "Tốn thời gian tính toán, không phù hợp với dữ liệu lớn.",
+                        "Không áp dụng được cho dữ liệu mới.",
+                        "Phụ thuộc nhiều vào tham số."
                     ]
                 })
+            
 
 
 
     with tab_preprocess:
-        with st.expander("**kỹ thuật thu gọn chiều**", expanded=True):    
+        with st.expander("**Kỹ thuật thu gọn chiều**", expanded=True):
+            # Khởi tạo X_train và X_test với giá trị mặc định (None) nếu không có trong session_state
+            X_train = None
+            X_test = None
 
-            if "X_train" in st.session_state and "X_val" in st.session_state and "X_test" in st.session_state:
-                # Lấy dữ liệu từ session_state
-                X_train = st.session_state.X_train
-                X_val = st.session_state.X_val
-                X_test = st.session_state.X_test
-                # Chuẩn hóa dữ liệu
+            if "X_train" not in st.session_state or "X_test" not in st.session_state:
+                st.error("⚠️ Dữ liệu huấn luyện hoặc kiểm tra chưa được tải. Vui lòng kiểm tra lại.")
+                return
+            else:
+                # Lưu dữ liệu vào session_state (nếu chưa có) và lấy dữ liệu mà không in ra
+                if "X_train_shape" not in st.session_state:
+                    st.session_state.X_train_shape = st.session_state.X_train.shape
+                if "X_test_shape" not in st.session_state:
+                    st.session_state.X_test_shape = st.session_state.X_test.shape
+
+            # Lấy dữ liệu từ session_state
+            X_train = st.session_state.X_train
+            X_test = st.session_state.X_test
+
+            # Chuẩn hóa dữ liệu
+            try:
                 scaler = StandardScaler()
                 X_train_scaled = scaler.fit_transform(X_train)
-                X_val_scaled = scaler.transform(X_val)
                 X_test_scaled = scaler.transform(X_test)
 
                 st.session_state.X_train_scaled = X_train_scaled
-                st.session_state.X_val_scaled = X_val_scaled
                 st.session_state.X_test_scaled = X_test_scaled
 
-                    
-                    # Chọn phương pháp phân cụm
-                dim_reduction_method = st.selectbox("**Chọn phương pháp thu gọn chiều:**", ["PCA", "t-SNE"])
-                if dim_reduction_method == "PCA":
-                    # Tham số của PCA
-                    n_components = st.slider("**Số thành phần chính (n_components):**", min_value=2, max_value=min(X_train.shape[1], 20), value=5)
-                    svd_solver = st.selectbox("**Thuật toán SVD:**", ["auto", "full", "arpack", "randomized"])
-                    whiten = st.checkbox("**Chuẩn hóa dữ liệu (whiten):**", value=False)
+                # st.success("✅ Dữ liệu đã được chuẩn hóa thành công.")
+            except Exception as e:
+                st.error(f"⚠️ Lỗi khi chuẩn hóa dữ liệu: {e}")
+                return
 
-                    if st.button("🚀 Chạy PCA"):
+            # Chọn số lượng mẫu để giảm chiều (chỉ từ tập huấn luyện)
+            n_samples = st.slider("**Số lượng mẫu để giảm chiều:**", 
+                                min_value=100, 
+                                max_value=X_train_scaled.shape[0], 
+                                value=X_train_scaled.shape[0], 
+                                step=100)
+            X_train_subset = X_train_scaled[:n_samples, :]  # Lấy một tập con của dữ liệu huấn luyện
+
+            # Chọn phương pháp giảm chiều
+            dim_reduction_method = st.selectbox("**Chọn phương pháp thu gọn chiều:**", ["PCA", "t-SNE"])
+
+            if dim_reduction_method == "PCA":
+                # Tham số của PCA
+                n_components = st.slider("**Số chiều:**", 
+                                      min_value=2, 
+                                      max_value=min(X_train_subset.shape[1], 20), 
+                                      value=5)
+            
+
+                # Chọn loại biểu đồ (2D hoặc 3D)
+                chart_type = st.selectbox("**Chọn loại biểu đồ:**", ["2D", "3D"])
+
+                if st.button("🚀 Chạy PCA"):
+                    with st.spinner("Đang huấn luyện mô hình..."):
                         with mlflow.start_run():
-                            # Áp dụng PCA
-                            pca = PCA(n_components=n_components, svd_solver=svd_solver, whiten=whiten, random_state=42)
-                            X_train_pca = pca.fit_transform(X_train_scaled)
-
-                            # Log tham số vào MLflow
-                            mlflow.log_param("algorithm", "PCA")
-                            mlflow.log_param("n_components", n_components)
-                            mlflow.log_param("svd_solver", svd_solver)
-                            mlflow.log_param("whiten", whiten)
-                            st.session_state.X_train_pca = X_train_pca
-                            st.session_state.explained_variance_ratio_ = pca.explained_variance_ratio_
-                            mlflow.log_param("X_train_pca",X_train_pca)
-                            # Log phương sai giải thích
-                            explained_variance = np.sum(pca.explained_variance_ratio_)
-                            mlflow.log_metric("explained_variance", explained_variance)
-
-                            # Vẽ biểu đồ
-                            fig, ax = plt.subplots(figsize=(6, 4))
-                            scatter = ax.scatter(X_train_pca[:, 0], X_train_pca[:, 1], alpha=0.5, cmap="coolwarm")
-                            ax.set_title(f"PCA với {n_components} thành phần chính")
-                            st.pyplot(fig)
-
-                            fig.savefig("pca_result.png")
-                            mlflow.log_artifact("pca_result.png")
-
-                            st.markdown(
-                                f"""
-                                ### Kết quả PCA:
-                                - Tổng phương sai được giữ lại: {explained_variance:.2f}  
-                                - **PCA** giúp giảm chiều dữ liệu trong khi vẫn giữ lại thông tin quan trọng. 
-                                """
-                            )
-                        mlflow.end_run()
-
-                elif dim_reduction_method == "t-SNE":
-                    # Tham số của t-SNE
-                    n_components = st.selectbox("**Số chiều đầu ra:**", [2, 3])
-                    if st.toggle("Hiển thị thông tin số chiều đầu ra"):
-                        st.write("**Nếu chọn 2**: 2D → Dễ vẽ biểu đồ trên mặt phẳng. Chuẩn hóa dữ liệu về khoảng [0,1] hoặc [-1,1], giúp duy trì tỷ lệ giữa các giá trị gốc.")
-                        st.write("**Nếu chọn 3**: 3D → Hiển thị tốt hơn với dữ liệu phức tạp. Biến đổi dữ liệu về trung bình 0 và độ lệch chuẩn 1, phù hợp với dữ liệu có phân phối chuẩn.")   
-                    perplexity = st.slider("**Perplexity:**", min_value=5, max_value=50, value=30)
-                    learning_rate = st.slider("**Learning rate:**", min_value=10, max_value=1000, value=200)
-                    n_iter = st.slider("**Số vòng lặp tối đa:**", min_value=250, max_value=5000, value=1000, step=250)
-                    metric = st.selectbox("**Khoảng cách:**", ["euclidean", "cosine", "manhattan"])
-
-                    if st.button("🚀 Chạy t-SNE"):
-                        with mlflow.start_run():
-                            # Áp dụng t-SNE
-                            tsne = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=learning_rate, 
-                                        n_iter=n_iter, metric=metric, random_state=42)
-                            X_train_tsne = tsne.fit_transform(X_train_scaled)
-                            st.session_state.X_train_tsne = X_train_tsne
                             try:
-                                st.session_state.kl_divergence = tsne.kl_divergence_
-                            except AttributeError:
-                                st.session_state.kl_divergence = "Không có thông tin"
-                            mlflow.log_param("algorithm", "t-SNE")
-                            mlflow.log_param("n_components", n_components)
-                            mlflow.log_param("perplexity", perplexity)
-                            mlflow.log_param("learning_rate", learning_rate)
-                            mlflow.log_param("n_iter", n_iter)
-                            mlflow.log_param("metric", metric)
-                            
-                            mlflow.log_param("X_train_tsne",X_train_tsne)
-                            
-                            fig, ax = plt.subplots(figsize=(6, 4))
-                            scatter = ax.scatter(X_train_tsne[:, 0], X_train_tsne[:, 1], alpha=0.5, cmap="coolwarm")
-                            ax.set_title(f"t-SNE với Perplexity={perplexity}")
-                            st.pyplot(fig)
+                                # Áp dụng PCA
+                                pca = PCA(n_components=n_components if chart_type == "3D" else 2,  
+                                        random_state=42)
+                                X_train_pca = pca.fit_transform(X_train_subset)
 
-                            fig.savefig("tsne_result.png")
-                            mlflow.log_artifact("tsne_result.png")
+                                # Log tham số vào MLflow
+                                mlflow.log_param("algorithm", "PCA")
+                                mlflow.log_param("n_components", n_components if chart_type == "3D" else 2)
+                                st.session_state.X_train_pca = X_train_pca
+                                st.session_state.explained_variance_ratio_ = pca.explained_variance_ratio_
+                                mlflow.log_param("X_train_pca", X_train_pca.tolist() if X_train_pca.size > 0 else "Empty")
 
-                            st.markdown(
-                                f"""
-                                ### Kết quả t-SNE:
-                                - Dữ liệu đã được giảm chiều xuống {n_components} chiều để trực quan hóa.  
-                                - **t-SNE** giúp giữ lại cấu trúc cục bộ của dữ liệu, thích hợp cho dữ liệu phi tuyến tính.
-                                """
-                            )
+                                # Log phương sai giải thích
+                                explained_variance = np.sum(pca.explained_variance_ratio_)
+                                mlflow.log_metric("explained_variance", explained_variance)
+
+                                # Tạo và hiển thị biểu đồ với Plotly (2D hoặc 3D)
+                                if chart_type == "3D":
+                                    fig = px.scatter_3d(
+                                        x=X_train_pca[:, 0], 
+                                        y=X_train_pca[:, 1], 
+                                        z=X_train_pca[:, 2] if n_components >= 3 else np.zeros_like(X_train_pca[:, 0]),
+                                        color=st.session_state.y_train[:n_samples],  # Sử dụng nhãn huấn luyện làm màu
+                                        opacity=0.6,
+                                        title=f"PCA 3D với {n_components} thành phần chính"
+                                    )
+                                else:
+                                    fig = px.scatter(
+                                        x=X_train_pca[:, 0], 
+                                        y=X_train_pca[:, 1],
+                                        color=st.session_state.y_train[:n_samples],  # Sử dụng nhãn huấn luyện làm màu
+                                        opacity=0.6,
+                                        title="PCA 2D với 2 thành phần chính"
+                                    )
+
+                                # Hiển thị biểu đồ trong Streamlit
+                                st.plotly_chart(fig, use_container_width=True)
+
+                                st.markdown(
+                                    f"""
+                                    ### Kết quả PCA:
+                                    - Tổng phương sai được giữ lại: {explained_variance:.2f}  
+                                    - **PCA** giúp giảm chiều dữ liệu trong khi vẫn giữ lại thông tin quan trọng. 
+                                    """
+                                )
+                            except Exception as e:
+                                st.error(f"⚠️ Lỗi khi chạy PCA: {e}")
                         mlflow.end_run()
 
+            elif dim_reduction_method == "t-SNE":
+                # Tham số của t-SNE
+                n_components = st.selectbox("**Số chiều đầu ra:**", [2, 3])
+                perplexity = st.slider("**Perplexity:**", min_value=5, max_value=50, value=30)
+                learning_rate = st.slider("**Learning rate:**", min_value=10, max_value=1000, value=200)
+                n_iter = st.slider("**Số vòng lặp tối đa:**", min_value=250, max_value=5000, value=1000, step=250)
+                
 
+                if st.button("🚀 Chạy t-SNE"):
+                    with st.spinner("Đang huấn luyện mô hình..."):
+                        with mlflow.start_run():
+                            try:
+                                # Áp dụng t-SNE
+                                tsne = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=learning_rate, 
+                                            n_iter=n_iter, random_state=42)
+                                X_train_tsne = tsne.fit_transform(X_train_subset)
+                                st.session_state.X_train_tsne = X_train_tsne
+                                try:
+                                    st.session_state.kl_divergence = tsne.kl_divergence_
+                                except AttributeError:
+                                    st.session_state.kl_divergence = "Không có thông tin"
+                                mlflow.log_param("algorithm", "t-SNE")
+                                mlflow.log_param("n_components", n_components)
+                                mlflow.log_param("perplexity", perplexity)
+                                mlflow.log_param("learning_rate", learning_rate)
+                                mlflow.log_param("n_iter", n_iter)
+                                
+                                mlflow.log_param("X_train_tsne", X_train_tsne.tolist() if X_train_tsne.size > 0 else "Empty")
+
+                                # Tạo và hiển thị biểu đồ với Plotly (2D hoặc 3D)
+                                if n_components == 3:
+                                    fig = px.scatter_3d(
+                                        x=X_train_tsne[:, 0], y=X_train_tsne[:, 1], z=X_train_tsne[:, 2],
+                                        color=st.session_state.y_train[:n_samples],  # Sử dụng nhãn huấn luyện làm màu
+                                        opacity=0.6,
+                                        title=f"t-SNE 3D với Perplexity={perplexity}"
+                                    )
+                                else:
+                                    fig = px.scatter(
+                                        x=X_train_tsne[:, 0], y=X_train_tsne[:, 1],
+                                        color=st.session_state.y_train[:n_samples],  # Sử dụng nhãn huấn luyện làm màu
+                                        opacity=0.6,
+                                        title=f"t-SNE 2D với Perplexity={perplexity}"
+                                    )
+
+                                # Hiển thị biểu đồ trong Streamlit
+                                st.plotly_chart(fig, use_container_width=True)
+
+                                st.markdown(
+                                    f"""
+                                    ### Kết quả t-SNE:
+                                    - Dữ liệu đã được giảm chiều xuống {n_components} chiều để trực quan hóa.  
+                                    - **t-SNE** giúp giữ lại cấu trúc cục bộ của dữ liệu, thích hợp cho dữ liệu phi tuyến tính.
+                                    """
+                                )
+                            except Exception as e:
+                                st.error(f"⚠️ Lỗi khi chạy t-SNE: {e}")
+                        mlflow.end_run()
                             
-
-    with tab_split:
-        with st.expander(" Đánh giá hiệu suất mô hình phân cụm", expanded=True):
-            if "X_train_pca" in st.session_state and "explained_variance_ratio_" in st.session_state:
-                X_reduced = st.session_state.X_train_pca
-                explained_var = st.session_state.explained_variance_ratio_
-
-                st.markdown("### PCA (Principal Component Analysis)")
-                st.markdown("---")
-                st.write(f"✅ **Explained Variance Ratio:** {explained_var}")
-                total_explained = np.sum(explained_var) * 100
-
-                # Tạo chuỗi giải thích động dựa trên giá trị thực tế
-                explanation = "**Giải thích:**\n"
-                for i, var in enumerate(explained_var):
-                    explanation += f"- Thành phần chính thứ {i+1} giải thích **{var*100:.2f}%** phương sai.\n"
-                st.markdown(explanation)
-                st.write(f"✅ **Tổng phương sai giải thích:** {np.sum(explained_var):.4f}")
-
-                # Vẽ biểu đồ trực quan hóa dữ liệu PCA
-                fig, ax = plt.subplots(figsize=(6, 4))
-                ax.scatter(X_reduced[:, 0], X_reduced[:, 1], alpha=0.6, marker='o', c='blue')
-                ax.set_title("Phân bố dữ liệu sau PCA")
-                ax.set_xlabel("Thành phần 1")
-                ax.set_ylabel("Thành phần 2")
-                st.pyplot(fig)
-
-            # Kiểm tra xem dữ liệu t-SNE có tồn tại không
-            elif "X_train_tsne" in st.session_state:
-                X_reduced = st.session_state.X_train_tsne
-                kl_divergence = st.session_state.get("kl_divergence", "Không có thông tin")
-
-                st.markdown("### t-SNE (t-Distributed Stochastic Neighbor Embedding)")
-                st.markdown("---")
-                st.write(f"✅ **KL Divergence:** {kl_divergence}")
-                st.markdown("""
-                - KL Divergence thấp cho thấy t-SNE hội tụ tốt.
-                - KL Divergence cao có thể do perplexity không phù hợp hoặc dữ liệu phức tạp.
-                """)
-
-                # Vẽ biểu đồ t-SNE
-                fig, ax = plt.subplots(figsize=(6, 4))
-                ax.scatter(X_reduced[:, 0], X_reduced[:, 1], alpha=0.6, marker='o', c='green')
-                ax.set_title("Phân bố dữ liệu sau t-SNE")
-                ax.set_xlabel("Thành phần 1")
-                ax.set_ylabel("Thành phần 2")
-                st.pyplot(fig)
-            else:
-                st.warning("⚠️ Chưa có dữ liệu giảm chiều để đánh giá!")
-
-            # So sánh cấu trúc dữ liệu trước và sau giảm chiều
-            if "X_train_scaled" in st.session_state and ("X_train_pca" in st.session_state or "X_train_tsne" in st.session_state):
-                X_original = st.session_state.X_train_scaled  # Dữ liệu gốc
-                original_distances = pairwise_distances(X_original[:500])
-                reduced_distances = pairwise_distances(X_reduced[:500])
-                correlation = np.corrcoef(original_distances.flatten(), reduced_distances.flatten())[0, 1]
-                st.write(f"✅ **Tương quan khoảng cách trước và sau giảm chiều:** {correlation:.4f}")
-
-            else:
-                st.warning("⚠️ Chưa có dữ liệu giảm chiều để đánh giá!")
     with tab_mlflow:
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:  
             client = MlflowClient()
-            experiment_name = "MyExperiment"
+            experiment_name = "PCA_TSNE"
     
             # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
@@ -544,10 +732,7 @@ def run_PcaTSNEMinst_app():
                     "n_components": selected_run.data.metrics.get("n_components", "N/A"),
                     "perplexity": selected_run.data.metrics.get("perplexity", "N/A"),
                     "learning_rate": selected_run.data.metrics.get("learning_rate", "N/A"),
-                    "n_iter": selected_run.data.metrics.get("n_iter", "N/A"),
-                    "metric": selected_run.data.metrics.get("metric", "N/A"),
-                    "svd_solver": selected_run.data.metrics.get("svd_solver", "N/A"),
-                    "whiten": selected_run.data.metrics.get("whiten", "N/A")
+                    "n_iter": selected_run.data.metrics.get("n_iter", "N/A")
                 }
                 st.json(metrics)
     
