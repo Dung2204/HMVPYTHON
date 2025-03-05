@@ -18,6 +18,7 @@ from sklearn.tree import DecisionTreeClassifier,plot_tree
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay
 from PIL import Image
+from sklearn.model_selection import KFold
 from collections import Counter
 from mlflow.tracking import MlflowClient
 
@@ -75,16 +76,15 @@ def run_ClassificationMinst_app():
     # Giao diện Streamlit
     st.title("📸 Phân loại ảnh MNIST với Streamlit")
     tabs = st.tabs([
-        "Tập dữ liệu",
-        "Xử lí dữ liệu",
+        "Thông tin dữ liệu",
         "Thông tin",
+        "Xử lí dữ liệu",
         "Huấn luyện mô hình",
-        "Đánh giá mô hình",
         "Demo dự đoán",
         "Thông tin & Mlflow",
     ])
     # tab_info, tab_load, tab_preprocess, tab_split,  tab_demo, tab_log_info = tabs
-    tab_info, tab_load,tab_note, tab_preprocess, tab_split,  tab_demo ,tab_mlflow= tabs
+    tab_info,tab_note,tab_load, tab_preprocess,  tab_demo ,tab_mlflow= tabs
 
     # with st.expander("🖼️ Dữ liệu ban đầu", expanded=True):
     with tab_info:
@@ -99,7 +99,7 @@ def run_ClassificationMinst_app():
             )
             # image = Image.open(r'C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image.png')
 
-            # # Gắn ảnh vào Streamlit và chỉnh kích thước
+            # Gắn ảnh vào Streamlit và chỉnh kích thước
             # st.image(image, caption='Mô tả ảnh', width=600) 
             # Đặc điểm của bộ dữ liệu
         with st.expander("**Đặc điểm của bộ dữ liệu**", expanded=True):
@@ -164,83 +164,67 @@ def run_ClassificationMinst_app():
                 st.session_state.test_labels = test_labels
 
 
-    # with st.expander("🖼️ XỬ LÝ DỮ LIỆU", expanded=True):
-    with tab_load:
-        with st.expander("**Phân chia dữ liệu**", expanded=True):    
-
-            # Kiểm tra nếu dữ liệu đã được load
-            if "train_images" in st.session_state:
-                # Lấy dữ liệu từ session_state
-                train_images = st.session_state.train_images
-                train_labels = st.session_state.train_labels
-                test_images = st.session_state.test_images
-                test_labels = st.session_state.test_labels
-
-                # Chuyển đổi dữ liệu thành vector 1 chiều
-                X_train = train_images.reshape(train_images.shape[0], -1)
-                X_test = test_images.reshape(test_images.shape[0], -1)
-                y_test = test_labels
-                with mlflow.start_run():
-
-                    # Cho phép người dùng chọn tỷ lệ validation và test
-                    val_size = st.slider("🔹 Chọn tỷ lệ tập validation (%)", min_value=10, max_value=50, value=20, step=5) / 100
-                    test_size = st.slider("🔹 Chọn tỷ lệ tập test (%)", min_value=10, max_value=50, value=20, step=5) / 100
-
-                    # Chia tập train thành train/validation theo tỷ lệ đã chọn
-                    X_train, X_val, y_train, y_val = train_test_split(X_train, train_labels, test_size=val_size, random_state=42)
-                    
-                    # Chia tập test thành test/validation theo tỷ lệ đã chọn
-                    # Chúng ta có thể chia tập test thành test và validation nếu tỷ lệ `test_size` đã chọn
-                    X_test, X_val, y_test, y_val = train_test_split(X_test, test_labels, test_size=test_size, random_state=42)
-
-                st.write("✅ Dữ liệu đã được xử lý và chia tách.")
-                st.write(f"🔹 Kích thước tập huấn luyện: `{X_train.shape}`")
-                st.write(f"🔹 Kích thước tập validation: `{X_val.shape}`")
-                st.write(f"🔹 Kích thước tập kiểm tra: `{X_test.shape}`")
-
-                # Biểu đồ phân phối nhãn dữ liệu
-                fig, ax = plt.subplots(figsize=(6, 4))
-                sns.barplot(x=list(Counter(y_train).keys()), y=list(Counter(y_train).values()), palette="Blues", ax=ax)
-                ax.set_title("Phân phối nhãn trong tập huấn luyện")
-                ax.set_xlabel("Nhãn")
-                ax.set_ylabel("Số lượng")
-                st.pyplot(fig)
-
-                st.markdown(
-                """
-                ### 📊 Mô tả biểu đồ  
-                Biểu đồ cột hiển thị **phân phối nhãn** trong tập huấn luyện.  
-                - **Trục hoành (x-axis):** Biểu diễn các nhãn (labels) từ `0` đến `9`.  
-                - **Trục tung (y-axis):** Thể hiện **số lượng mẫu dữ liệu** tương ứng với mỗi nhãn.  
-                """
-                )
-            else:
-                st.error("🚨 Dữ liệu chưa được nạp. Hãy đảm bảo `train_images`, `train_labels` và `test_images` đã được tải trước khi chạy.")
-
-
     with tab_note:
         with st.expander("**Thông tin mô hình**", expanded=True):    
             # Assume model_option1 is selected from somewhere in the app
             model_option1 = st.selectbox("Chọn mô hình", ["Decision Tree", "SVM"])
             if model_option1 == "Decision Tree":
+                
                 st.markdown("""
                 ### Decision Tree (Cây quyết định)
-
-                **Khái niệm**:  
-                Cây quyết định là một thuật toán học máy dạng cây dùng để phân loại hoặc dự đoán giá trị liên tục. Mỗi nút trong cây đại diện cho một điều kiện kiểm tra (feature), mỗi nhánh là kết quả của kiểm tra đó, và mỗi lá cây chứa nhãn của lớp hoặc giá trị dự đoán.
-                
-                            
-                **Các tham số của Decision Tree:**
-                - **Gini Index**:  
-                Gini Index là một chỉ số đo độ không thuần nhất của một tập hợp. Nó được sử dụng trong thuật toán cây quyết định để chọn đặc trưng phân chia dữ liệu sao cho thu được sự phân chia tốt nhất. Gini Index có giá trị từ 0 đến 1, trong đó 0 có nghĩa là các đối tượng trong tập hợp đều thuộc cùng một lớp.
-                
-                - **Entropy**:  
-                Entropy là một chỉ số đo độ không chắc chắn (mức độ hỗn loạn) của một tập hợp dữ liệu. Được dùng trong các thuật toán như ID3 hoặc C4.5 để tính toán mức độ thuần nhất của các phân nhóm dữ liệu.
-                
-    
-                **Biểu đồ cây quyết định**:  
-                Một cây quyết định có thể được biểu diễn dưới dạng cấu trúc cây, với các nhánh nối các nút kiểm tra đến các nhánh con. Mỗi nút kiểm tra sẽ phân chia dữ liệu thành các nhánh con dựa vào điều kiện (ví dụ: giá trị của một đặc trưng).
                 """)
+                st.markdown("---")
+                st.markdown("""
+                ### Khái niệm:  
+                **Decision Tree (Cây quyết định)**:
+                - **Decision Tree (Cây quyết định)** là một thuật toán học máy sử dụng cấu trúc dạng cây để đưa ra quyết định phân loại hoặc dự đoán giá trị liên tục. 
+                - Nó hoạt động bằng cách chia dữ liệu thành các tập con nhỏ hơn dựa trên giá trị của các đặc trưng, với mỗi nút trong cây đại diện cho một điều kiện kiểm tra, mỗi nhánh là kết quả của điều kiện đó, và mỗi lá cây là kết quả cuối cùng (nhãn lớp hoặc giá trị dự đoán).
+
+                **Cách hoạt động**:  
+                - **Cây quyết định** bắt đầu từ nút gốc (root), kiểm tra một đặc trưng của dữ liệu, và phân chia dữ liệu thành các nhánh con dựa trên kết quả kiểm tra. 
+                - Quá trình này lặp lại cho đến khi dữ liệu được phân chia hoàn toàn hoặc đạt đến điều kiện dừng (ví dụ: độ sâu tối đa). 
+                - Thuật toán thường sử dụng các tiêu chí như độ thuần nhất để chọn đặc trưng tốt nhất cho mỗi lần phân chia.
+                """)
+                st.markdown("---")
+                st.markdown("""
+                ### Công thức toán học:  
+                **Entropy**: 
+                -Đo lường độ không chắc chắn của tập dữ liệu:  
+                $$
+                H(S) = - \\sum_{i=1}^{c} p_i \\log_2(p_i)
+                $$
+                Trong đó:  
+                - $$(S)$$: Tập dữ liệu.  
+                - $$(c)$$: Số lớp.  
+                - $$(p_i)$$: Tỷ lệ mẫu thuộc lớp \(i\).  
+
+                **Information Gain**: Đo lường mức độ giảm **entropy** sau khi phân chia:  
+                $$
+                IG(S, A) = H(S) - \\sum_{j=1}^{k} \\frac{|S_v|}{|S|} H(S_v)
+                $$
+                Trong đó:  
+                - $$(A)$$: Đặc trưng được chọn để phân chia.  
+                - $$(S_v)$$: Tập con của \(S\) với giá trị \(v\) của đặc trưng \(A\).  
+                """)
+                st.markdown("---")
+                st.markdown("""
+                ### Hoạt động trên MNIST:  
+                Với bộ dữ liệu **MNIST** (ảnh chữ số viết tay 28x28, 10 lớp từ 0-9), Decision Tree sẽ:  
+                - Mỗi ảnh trong **MNIST** có kích thước 28×28 pixels, mỗi pixel có thể xem là một đặc trưng (feature).
+                - Mô hình sẽ quyết định phân tách dữ liệu bằng cách chọn những pixels quan trọng nhất để tạo nhánh.
+                - Ví dụ, để phân biệt chữ số 0 và 1, **Decision Tree** có thể kiểm tra:
+                    - Pixel ở giữa có sáng không?
+                    - Pixel dọc hai bên có sáng không?
+                - Dựa trên câu trả lời, mô hình sẽ tiếp tục chia nhỏ tập dữ liệu.
+                """)
+                st.markdown("""
+                ### Áp dụng vào ngữ cảnh Decision Tree với MNIST:
+                - **Entropy** giúp **Decision Tree** đánh giá mức độ hỗn loạn của dữ liệu **MNIST** (ví dụ: tập hợp các ảnh chữ số 0-9 có tỷ lệ phân bố như thế nào).
+                - **Information Gain** được dùng để chọn các pixel (đặc trưng) quan trọng nhất (ví dụ: pixel sáng/tối ở vị trí nào) để phân chia dữ liệu, từ đó xây dựng cây phân loại các chữ số hiệu quả.
+                """)
+                
+                st.markdown("---")
+                st.markdown("### Ví dụ về Decision TreeTree: minh họa mô hình phân loại dữ liệu hoa Iris")
                 # Tải bộ dữ liệu Iris từ sklearn
                 iris = load_iris()
                 X, y = iris.data, iris.target
@@ -256,39 +240,67 @@ def run_ClassificationMinst_app():
                 # Hiển thị biểu đồ trên Streamlit
                 st.pyplot(fig)
                 st.markdown("""
-                 📝 Giải thích về cây quyết định ví dụ trên:
+                📝 Giải thích về cây quyết định ví dụ trên:
                 - **Các nút (Nodes)**: Mỗi hình chữ nhật là một nút quyết định dựa trên một đặc trưng của dữ liệu.
-                - **Gini/Entropy**: Độ thuần khiết của dữ liệu tại mỗi nút.
+                - **Nhánh (Branches)**: Các đường nối thể hiện kết quả của điều kiện kiểm tra.
                 - **Samples**: Số lượng mẫu tại mỗi nút.
-                - **Class**: Nhãn được dự đoán tại nút đó.
+                - **Class**: Nhãn được dự đoán tại nút lá.
 
-                Biểu đồ trên thể hiện cách mô hình phân loại dữ liệu dựa vào đặc trưng của hoa Iris.
+                Biểu đồ trên thể hiện cách mô hình phân loại dữ liệu hoa Iris dựa trên các đặc trưng như chiều dài cánh hoa hoặc đài hoa.
                 """)
-
 
             elif model_option1 == "SVM":
                 st.markdown("""
                 ### Support Vector Machine (SVM)
+                """)    
+                st.markdown("---")        
+                st.markdown("""            
+                ### Khái niệm:  
+                **Support Vector Machine (SVM)**:
+                - Là một thuật toán học máy mạnh mẽ, thường được sử dụng cho bài toán phân loại (đặc biệt là phân loại nhị phân) hoặc hồi quy. 
+                - Ý tưởng chính của **SVM** là tìm một siêu phẳng (hyperplane) trong không gian đa chiều để phân chia các lớp dữ liệu sao cho khoảng cách từ siêu phẳng đến các điểm dữ liệu gần nhất (**support vectors**) là lớn nhất có thể.
 
-                **Khái niệm**:  
-                Support Vector Machine (SVM) là một thuật toán học máy dùng để phân loại hoặc hồi quy, đặc biệt nổi bật trong phân loại nhị phân. Mục tiêu của SVM là tìm một siêu phẳng phân chia các lớp sao cho khoảng cách giữa siêu phẳng và các điểm gần nhất của các lớp (gọi là support vectors) là lớn nhất.
+                **Cách hoạt động**:  
+                - **SVM** cố gắng tối ưu hóa ranh giới phân chia giữa các lớp bằng cách tối đa hóa "khoảng cách lề" (margin) giữa siêu phẳng và các điểm dữ liệu gần nhất. 
+                - Trong trường hợp dữ liệu không thể phân chia tuyến tính, SVM sử dụng các kỹ thuật như biến đổi không gian (thông qua kernel) để đưa dữ liệu vào không gian cao hơn, nơi có thể phân chia được.
+                """) 
+                st.markdown("---")          
+                st.markdown("""
+                ### Công thức toán học:  
+                **Siêu phẳng**:
+                - **Siêu phẳng** đóng vai trò làm ranh giới quyết định, phân chia các lớp dữ liệu (ví dụ: lớp 0 và lớp 1) trong không gian đặc trưng, đảm bảo khoảng cách lớn nhất đến các điểm gần nhất.
+                - Được định nghĩa bởi phương trình:  
+                $$
+                w^T x + b = 0
+                $$
+                Trong đó:  
+                - \(w\): Vector trọng số (vuông góc với siêu phẳng).  
+                - \(x\): Vector đặc trưng.  
+                - \(b\): Độ lệch (bias).  
 
-                **Các tham số của SVM:**
-                - **Linear**:  
-                Trong SVM với kernel "linear", siêu phẳng phân chia các điểm dữ liệu bằng một đường thẳng trong không gian hai chiều (hoặc siêu phẳng trong không gian đa chiều). Phù hợp với dữ liệu có thể phân chia trực tiếp bằng một đường thẳng.
-                - **Poly**:  
-                Kernel polynomial (poly) sử dụng đa thức để tạo ra các ranh giới phân chia phi tuyến tính. Đây là một phương pháp có thể phân chia các lớp không thể phân chia được bằng đường thẳng.
+                **Tối ưu hóa lề**: 
+                - **Tối ưu hóa lề** là bài toán tối ưu hóa nhằm tìm **siêu phẳng** tốt nhất, tối đa hóa margin (khoảng cách giữa siêu phẳng và các support vectors) bằng cách giảm thiểu độ dài vector \(w\), đồng thời đảm bảo tất cả các điểm dữ liệu được phân loại đúng.
+                - Được định nghĩa bởi phương trình:  
+                $$
+                \\min_{w, b} \\frac{1}{2} ||w||^2 \\quad \\text{với điều kiện} \\quad y_i (w^T x_i + b) \\geq 1, \\forall i
+                $$
+                Trong đó:  
+                - $$(||w||)$$: Độ dài vector \(w\).
+                - $$(y_i)$$: Nhãn của mẫu \(i\) (\(+1\) hoặc \(-1\)).  
+                - $$(x_i)$$: Vector đặc trưng của mẫu \(i\).  
 
-                - **RBF (Radial Basis Function)**:  
-                Kernel RBF là một kernel phổ biến giúp tạo ra một không gian cao hơn (không gian đặc trưng) trong đó dữ liệu có thể phân chia tốt hơn. Kernel này giúp SVM phân loại các dữ liệu không tuyến tính.
-
-                - **Sigmoid**:  
-                Kernel Sigmoid mô phỏng một hàm kích hoạt trong mạng nơ-ron, sử dụng hàm hyperbolic tangent (tanh). Kernel này có thể phân chia dữ liệu một cách phi tuyến.
-
-
-                **Biểu đồ của SVM**:  
-                Trong SVM, biểu đồ có thể bao gồm các điểm dữ liệu phân tán trong không gian đa chiều, với siêu phẳng phân chia giữa hai lớp. Các support vector nằm gần siêu phẳng và có ảnh hưởng trực tiếp đến việc xác định siêu phẳng.
+                **Kernel Trick**: Khi dữ liệu không tuyến tính, sử dụng hàm kernel $$(K(x_i, x_j))$$ để ánh xạ dữ liệu vào không gian cao hơn.
+                """)           
+                st.markdown("---")
+                st.markdown("""  
+                ### Áp dụng vào ngữ cảnh SVM với MNIST:  
+                - Trong thực tế, trước khi áp dụng SVM trên MNIST, dữ liệu thường được chuẩn hóa (ví dụ: chia giá trị pixel cho 255 để đưa về khoảng [0, 1]) để cải thiện hiệu suất của kernel và tránh các vấn đề số học.  
+                - Do MNIST có 70,000 mẫu (60,000 huấn luyện và 10,000 kiểm tra) với 784 đặc trưng (28x28 pixel), SVM có thể yêu cầu giảm chiều dữ liệu (ví dụ: sử dụng PCA) hoặc tối ưu hóa tham số (như \(C\) và \(\gamma\) trong kernel RBF) để giảm độ phức tạp tính toán và tăng độ chính xác.  
+                - SVM trên MNIST thường sử dụng chiến lược One-vs-Rest hoặc One-vs-One để xử lý 10 lớp, với kernel RBF là lựa chọn phổ biến do tính phi tuyến của dữ liệu. Tuy nhiên, với dữ liệu lớn và phức tạp như MNIST, các mô hình như Convolutional Neural Networks (CNN) thường hiệu quả hơn, nhưng SVM vẫn có thể áp dụng trên tập con nhỏ hơn hoặc sau khi giảm chiều.
                 """)
+
+                st.markdown("---")
+                st.markdown("### Ví dụ về SVM: minh họa về ranh giới quyết định (decision boundary)")
                 X = np.array([[1, 2], [2, 3], [3, 3], [6, 5], [7, 8], [8, 8]])  # 6 điểm (x, y)
                 y = np.array([0, 0, 0, 1, 1, 1])  # Nhãn (0 hoặc 1)
 
@@ -320,10 +332,51 @@ def run_ClassificationMinst_app():
                 st.pyplot(fig)
                 st.markdown("""
                 📝 Giải thích về biểu đồ SVM ví dụ trên:
-                - Các điểm tròn đại diện cho dữ liệu, với **màu sắc khác nhau** cho hai lớp.
-                - Đường **đứt nét** là **ranh giới quyết định** của SVM.
+                - Các **điểm tròn** đại diện cho dữ liệu, với màu sắc khác nhau biểu thị hai lớp.
+                - Đường **đứt nét** là ranh giới quyết định (siêu phẳng) phân chia hai lớp.
                 - **Điểm bên trái** thuộc lớp `0`, **điểm bên phải** thuộc lớp `1`.
                 """)
+
+
+    with tab_load:
+        with st.expander("**Phân chia dữ liệu**", expanded=True):    
+
+            # Kiểm tra nếu dữ liệu đã được load
+            if "train_images" in st.session_state:
+                # Lấy dữ liệu từ session_state
+                train_images = st.session_state.train_images
+                train_labels = st.session_state.train_labels
+                test_images = st.session_state.test_images
+                test_labels = st.session_state.test_labels
+
+                # Chuyển đổi dữ liệu thành vector 1 chiều
+                X = np.concatenate((train_images, test_images), axis=0)  # Gộp toàn bộ dữ liệu
+                y = np.concatenate((train_labels, test_labels), axis=0)
+                X = X.reshape(X.shape[0], -1)  # Chuyển thành vector 1 chiều
+                with mlflow.start_run():
+
+                    # Cho phép người dùng chọn tỷ lệ validation và test
+                    test_size = st.slider("🔹 Chọn % tỷ lệ tập test", min_value=10, max_value=50, value=20, step=5) / 100
+                    val_size = st.slider("🔹 Chọn % tỷ lệ tập validation (trong phần train)", min_value=10, max_value=50, value=20, step=5) / 100
+
+                    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+                    val_size_adjusted = val_size / (1 - test_size)  # Điều chỉnh tỷ lệ val cho phần còn lại
+                    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=val_size_adjusted, random_state=42)
+
+                    # Tính tỷ lệ thực tế của từng tập
+                    total_samples = X.shape[0]
+                    test_percent = (X_test.shape[0] / total_samples) * 100
+                    val_percent = (X_val.shape[0] / total_samples) * 100
+                    train_percent = (X_train.shape[0] / total_samples) * 100
+                st.write(f"📊 **Tỷ lệ phân chia**: Test={test_percent:.0f}%, Validation={val_percent:.0f}%, Train={train_percent:.0f}%")
+                st.write("✅ Dữ liệu đã được xử lý và chia tách.")
+                st.write(f"🔹 Kích thước tập huấn luyện: `{X_train.shape}`")
+                st.write(f"🔹 Kích thước tập validation: `{X_val.shape}`")
+                st.write(f"🔹 Kích thước tập kiểm tra: `{X_test.shape}`")
+            else:
+                st.error("🚨 Dữ liệu chưa được nạp. Hãy đảm bảo `train_images`, `train_labels` và `test_images` đã được tải trước khi chạy.")
+
+
 
     # 3️⃣ HUẤN LUYỆN MÔ HÌNH
     with tab_preprocess:
@@ -334,133 +387,135 @@ def run_ClassificationMinst_app():
                 st.subheader("🌳 Decision Tree Classifier")
                         
                         # Lựa chọn tham số cho Decision Tree
-                criterion = st.selectbox("Chọn tiêu chí phân nhánh:", ["gini", "entropy"])
+                # criterion = st.selectbox("Chọn tiêu chí phân nhánh:", (["entropy"]))
                 max_depth = st.slider("Chọn độ sâu tối đa của cây:", min_value=1, max_value=20, value=5)
+                st.session_state["dt_max_depth"] = max_depth
+                n_folds = st.slider("Chọn số folds cho K-Fold Cross-Validation:", min_value=2, max_value=10, value=5)
 
                 if st.button("🚀 Huấn luyện mô hình"):
-                    with mlflow.start_run():
-                        dt_model = DecisionTreeClassifier(criterion=criterion, max_depth=max_depth, random_state=42)
-                        dt_model.fit(X_train, y_train)
-                        y_val_pred_dt = dt_model.predict(X_val)
-                        accuracy_dt = accuracy_score(y_val, y_val_pred_dt)
+                    with st.spinner("Đang huấn luyện mô hình..."):
+                        with mlflow.start_run():
+                            # Khởi tạo mô hình Decision Tree
+                            dt_model = DecisionTreeClassifier( max_depth=max_depth, random_state=42)
 
-                        mlflow.log_param("model_type", "Decision Tree")
-                        mlflow.log_param("criterion", criterion)
-                        mlflow.log_param("max_depth", max_depth)
-                        mlflow.log_metric("accuracy", accuracy_dt)
-                        mlflow.sklearn.log_model(dt_model, "decision_tree_model")
+                            # Thực hiện K-Fold Cross-Validation với số folds do người dùng chọn
+                            kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
+                            cv_scores = []
 
-                        st.session_state["selected_model_type"] = "Decision Tree"
-                        st.session_state["trained_model"] = dt_model 
-                        st.session_state["X_train"] = X_train   
+                            for train_index, val_index in kf.split(X_train):
+                                X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
+                                y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
 
-                        st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_dt:.4f}`")
+                                # Huấn luyện mô hình trên fold hiện tại
+                                dt_model.fit(X_train_fold, y_train_fold)
+                                # Dự đoán và tính độ chính xác trên tập validation của fold
+                                y_val_pred_fold = dt_model.predict(X_val_fold)
+                                fold_accuracy = accuracy_score(y_val_fold, y_val_pred_fold)
+                                cv_scores.append(fold_accuracy)
 
-                                # Hiển thị kết quả bằng biểu đồ
-                        fig, ax = plt.subplots(figsize=(6, 4))
-                        sns.barplot(x=["Decision Tree"], y=[accuracy_dt], palette="Blues", ax=ax)
-                        ax.set_ylim(0, 1)
-                        ax.set_title("Độ chính xác của Decision Tree")
-                        ax.set_ylabel("Accuracy")
-                        st.pyplot(fig)
-                    mlflow.end_run()
+                            # Tính độ chính xác trung bình từ cross-validation
+                            mean_cv_accuracy = np.mean(cv_scores)
+                            std_cv_accuracy = np.std(cv_scores)  # Độ lệch chuẩn để đánh giá độ ổn định
 
+                            # Huấn luyện mô hình trên toàn bộ X_train, y_train để sử dụng sau này
+                            dt_model.fit(X_train, y_train)
+                            y_val_pred_dt = dt_model.predict(X_val)
+                            accuracy_dt = accuracy_score(y_val, y_val_pred_dt)
+
+                            # Ghi log vào MLflow
+                            mlflow.log_param("model_type", "Decision Tree")
+                        
+                            mlflow.log_param("max_depth", max_depth)
+                            mlflow.log_param("n_folds", n_folds)  # Ghi số folds do người dùng chọn
+                            mlflow.log_metric("mean_cv_accuracy", mean_cv_accuracy)
+                            mlflow.log_metric("std_cv_accuracy", std_cv_accuracy)
+                            mlflow.log_metric("accuracy", accuracy_dt)
+                            mlflow.sklearn.log_model(dt_model, "decision_tree_model")
+
+                            # Lưu vào session_state
+                            st.session_state["selected_model_type"] = "Decision Tree"
+                            st.session_state["trained_model"] = dt_model 
+                            st.session_state["X_train"] = X_train 
+                            st.session_state["dt_max_depth"] = max_depth
+                            st.session_state["n_folds"] = n_folds 
+
+                    
+                            st.markdown("---") 
+                            st.write(f"🔹Mô hình được chọn để đánh giá: `{model_option}`")
+                            st.write("🔹 Tham số mô hình:")
+                            st.write(f"- **Độ sâu tối đa**: `{max_depth}`")
+                            st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
+                            st.write(f"✅ **Độ chính xác trung bình từ K-Fold Cross-Validation ({n_folds} folds):** `{mean_cv_accuracy:.4f} ± {std_cv_accuracy:.4f}`")
+                            st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_dt:.4f}`")
+                            
+                        mlflow.end_run()
             elif model_option == "SVM":
                 st.subheader("🌀 Support Vector Machine (SVM)")
                             
                             # Lựa chọn tham số cho SVM
                 kernel = st.selectbox("Chọn kernel:", ["linear", "poly", "rbf", "sigmoid"])
                 C = st.slider("Chọn giá trị C (điều chỉnh mức độ regularization):", min_value=0.1, max_value=10.0, value=1.0)
-
+                n_folds = st.slider("Chọn số folds cho K-Fold Cross-Validation:", min_value=2, max_value=10, value=5)
                 if st.button("🚀 Huấn luyện mô hình"):
-                    with mlflow.start_run(): 
-                        svm_model = SVC(kernel=kernel, C=C, random_state=42)
-                        svm_model.fit(X_train, y_train)
-                        y_val_pred_svm = svm_model.predict(X_val)
-                        accuracy_svm = accuracy_score(y_val, y_val_pred_svm)
+                    with st.spinner("Đang huấn luyện mô hình..."):
+                        with mlflow.start_run():
+                            # Khởi tạo mô hình SVM
+                            svm_model = SVC(kernel=kernel, C=C, random_state=42)
 
-                        mlflow.log_param("model_type", "SVM")
-                        mlflow.log_param("kernel", kernel)
-                        mlflow.log_param("C_value", C)
-                        mlflow.log_metric("accuracy", accuracy_svm)
-                        mlflow.sklearn.log_model(svm_model, "svm_model")
+                            # Thực hiện K-Fold Cross-Validation với số folds do người dùng chọn
+                            kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
+                            cv_scores = []
 
-                        st.session_state["selected_model_type"] = "SVM"
-                        st.session_state["trained_model"] = svm_model  
-                        st.session_state["X_train"] = X_train
+                            for train_index, val_index in kf.split(X_train):
+                                X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
+                                y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
 
-                        st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_svm:.4f}`")
+                                # Huấn luyện mô hình trên fold hiện tại
+                                svm_model.fit(X_train_fold, y_train_fold)
+                                # Dự đoán và tính độ chính xác trên tập validation của fold
+                                y_val_pred_fold = svm_model.predict(X_val_fold)
+                                fold_accuracy = accuracy_score(y_val_fold, y_val_pred_fold)
+                                cv_scores.append(fold_accuracy)
 
-                                    # Hiển thị kết quả bằng biểu đồ
-                        fig, ax = plt.subplots(figsize=(6, 4))
-                        sns.barplot(x=["SVM"], y=[accuracy_svm], palette="Reds", ax=ax)
-                        ax.set_ylim(0, 1)
-                        ax.set_title("Độ chính xác của SVM")
-                        ax.set_ylabel("Accuracy")
-                        st.pyplot(fig)
-                    mlflow.end_run()
+                            # Tính độ chính xác trung bình từ cross-validation
+                            mean_cv_accuracy = np.mean(cv_scores)
+                            std_cv_accuracy = np.std(cv_scores)  # Độ lệch chuẩn để đánh giá độ ổn định
 
-    # 3️⃣ ĐÁNH GIÁ MÔ HÌNH
-    with tab_split:
-        with st.expander("**Đánh giá mô hình**", expanded=True):
-            st.write("**Đánh giá mô hình bằng Confusion Matrix**")
-            # Kiểm tra xem mô hình nào đã được huấn luyện
-            if "selected_model_type" not in st.session_state or "trained_model" not in st.session_state:
-                st.warning("⚠️ Chưa có mô hình nào được huấn luyện. Vui lòng huấn luyện ít nhất một mô hình trước khi đánh giá.")
-            else:
-                # Lấy mô hình đã được huấn luyện
-                best_model_name = st.session_state.selected_model_type  
-                best_model = st.session_state.trained_model  
+                            # Huấn luyện mô hình trên toàn bộ X_train, y_train để sử dụng sau này
+                            svm_model.fit(X_train, y_train)
+                            y_val_pred_svm = svm_model.predict(X_val)
+                            accuracy_svm = accuracy_score(y_val, y_val_pred_svm)
 
-                st.write(f"🔹Mô hình được chọn để đánh giá: `{best_model_name}`")
-                    # Hiển thị các tham số đã sử dụng trong quá trình huấn luyện
-                with mlflow.start_run():    
-                    if best_model_name == "Decision Tree":
-                        criterion = st.session_state.get("dt_criterion", "gini")
-                        max_depth = st.session_state.get("dt_max_depth", None)
-                        st.write("🔹 Tham số mô hình:")
-                        st.write(f"- **Tiêu chí phân nhánh**: `{criterion}`")
-                        st.write(f"- **Độ sâu tối đa**: `{max_depth}`")
+                            # Ghi log vào MLflow
+                            mlflow.log_param("model_type", "SVM")
+                            mlflow.log_param("kernel", kernel)
+                            mlflow.log_param("C_value", C)
+                            mlflow.log_param("n_folds", n_folds)  # Ghi số folds do người dùng chọn
+                            mlflow.log_metric("mean_cv_accuracy", mean_cv_accuracy)
+                            mlflow.log_metric("std_cv_accuracy", std_cv_accuracy)
+                            mlflow.log_metric("accuracy", accuracy_svm)
+                            mlflow.sklearn.log_model(svm_model, "svm_model")
 
-                    elif best_model_name == "SVM":
-                        kernel = st.session_state.get("svm_kernel", "linear")
-                        C = st.session_state.get("svm_C", 1.0)
-                        st.write("🔹 **Tham số mô hình:**")
-                        st.write(f"- Kernel: `{kernel}`")
-                        st.write(f"- C (Regularization): `{C}`")
+                            # Lưu vào session_state
+                            st.session_state["selected_model_type"] = "SVM"
+                            st.session_state["trained_model"] = svm_model  
+                            st.session_state["X_train"] = X_train
+                            st.session_state["svm_kernel"] = kernel  # Lưu kernel vào session_state
+                            st.session_state["svm_C"] = C  # Lưu C vào session_state
+                            st.session_state["n_folds"] = n_folds
 
-                        # Dự đoán trên tập kiểm tra
-                    y_test_pred = best_model.predict(X_test)
-                    st.session_state["y_test_pred"] = y_test_pred
-
-                        # Confusion Matrix
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    ConfusionMatrixDisplay.from_predictions(y_test, y_test_pred, cmap="Blues", ax=ax)
-                    ax.set_title(f"Confusion Matrix của {best_model_name} trên tập kiểm tra")
-
-                    st.pyplot(fig)
-
-                        # Hiển thị độ chính xác
-                    test_accuracy = accuracy_score(y_test, y_test_pred)
-                    st.session_state["test_accuracy"] = test_accuracy
-                    st.write(f"✅ **Độ chính xác trên tập kiểm tra:** `{test_accuracy:.4f}`")
-                    mlflow.log_param("selected_model", best_model_name)
-                    mlflow.log_metric("test_accuracy", test_accuracy)  # Log accuracy trên test set
-
-                        # Lưu Confusion Matrix vào file ảnh
-                    confusion_matrix_path = "confusion_matrix.png"
-                    fig.savefig(confusion_matrix_path)
-                    mlflow.log_artifact(confusion_matrix_path)  # Log ảnh vào MLflow
-                    
-                
-                st.markdown(
-                """
-                ### 📈 Tổng kết:
-                - 🚀 Mô hình có thể hoạt động tốt hoặc cần cải thiện dựa vào độ chính xác trên tập kiểm tra.
-                - 📊 Quan sát ma trận nhầm lẫn** để xem nhãn nào hay bị nhầm lẫn nhất.
-                - 🔍 Có thể cần điều chỉnh tham số hoặc dùng mô hình khác nếu độ chính xác chưa đủ cao.
-                """
-                )
+                            st.markdown("---") 
+                            st.write(f"🔹Mô hình được chọn để đánh giá: `{model_option}`")
+                            kernel = st.session_state.get("svm_kernel", "linear")
+                            C = st.session_state.get("svm_C", 1.0)
+                            st.write("🔹 **Tham số mô hình:**")
+                            st.write(f"- Kernel: `{kernel}`")
+                            st.write(f"- C (Regularization): `{C}`")
+                            st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
+                            st.write(f"✅ **Độ chính xác trung bình từ K-Fold Cross-Validation ({n_folds} folds):** `{mean_cv_accuracy:.4f} ± {std_cv_accuracy:.4f}`")
+                            st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_svm:.4f}`")
+                            
+                        mlflow.end_run()
 
     with tab_demo:   
         with st.expander("**Dự đoán kết quả**", expanded=True):
@@ -474,7 +529,25 @@ def run_ClassificationMinst_app():
                 best_model = st.session_state.trained_model
 
                 st.write(f"🎯 Mô hình đang sử dụng: `{best_model_name}`")
-                st.write(f"✅ Độ chính xác trên tập kiểm tra: `{st.session_state.get('test_accuracy', 'N/A'):.4f}`")
+                # st.write(f"✅ Độ chính xác trên tập kiểm tra: `{st.session_state.get('test_accuracy', 'N/A'):.4f}`")
+
+                # Lấy các tham số từ session_state để hiển thị
+                if best_model_name == "Decision Tree":
+                    criterion = st.session_state.get("dt_criterion", "entropy")
+                    max_depth = st.session_state.get("dt_max_depth", 5)  # Giá trị mặc định là 5
+                    n_folds = st.session_state.get("n_folds", 5)  # Giá trị mặc định là 5
+                    st.write("🔹 **Tham số mô hình Decision Tree:**")
+                    st.write(f"- **Tiêu chí phân nhánh**: `{criterion}`")
+                    st.write(f"- **Độ sâu tối đa**: `{max_depth}`")
+                    st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
+                elif best_model_name == "SVM":
+                    kernel = st.session_state.get("svm_kernel", "linear")
+                    C = st.session_state.get("svm_C", 1.0)
+                    n_folds = st.session_state.get("n_folds", 5)  # Giá trị mặc định là 5
+                    st.write("🔹 **Tham số mô hình SVM:**")
+                    st.write(f"- **Kernel**: `{kernel}`")
+                    st.write(f"- **C (Regularization)**: `{C}`")
+                    st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
 
                 # Cho phép người dùng tải lên ảnh
                 uploaded_file = st.file_uploader("📂 Chọn một ảnh để dự đoán", type=["png", "jpg", "jpeg"])
@@ -508,7 +581,7 @@ def run_ClassificationMinst_app():
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
             client = MlflowClient()
-            experiment_name = "MyExperiment"
+            experiment_name = "Classification"
     
             # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
@@ -573,13 +646,16 @@ def run_ClassificationMinst_app():
     
                 st.markdown("### Chỉ số đã log")
                 metrics = {
-                    "Mean CV Score (R²)": selected_run.data.metrics.get("mean_cv_score", "N/A"),
-                    "Validation MSE": selected_run.data.metrics.get("validation_mse", "N/A"),
-                    "Validation R²": selected_run.data.metrics.get("validation_r2", "N/A"),
-                    "Validation Accuracy": selected_run.data.metrics.get("validation_accuracy", "N/A"),
-                    "Test MSE": selected_run.data.metrics.get("test_mse", "N/A"),
-                    "Test R²": selected_run.data.metrics.get("test_r2", "N/A"),
-                    "Test Accuracy": selected_run.data.metrics.get("test_accuracy", "N/A")
+                    "max_depth": selected_run.data.metrics.get("max_depth", "N/A"),
+                    "n_folds": selected_run.data.metrics.get("n_folds", "N/A"),
+                    "mean_cv_accuracy": selected_run.data.metrics.get("mean_cv_accuracy", "N/A"),
+                    "std_cv_accuracy": selected_run.data.metrics.get("std_cv_accuracy", "N/A"),
+                    "accuracy": selected_run.data.metrics.get("accuracy", "N/A"),
+                    "model_type": selected_run.data.metrics.get("model_type", "N/A"),
+                    "kernel": selected_run.data.metrics.get("kernel", "N/A"),
+                    "C_value": selected_run.data.metrics.get("C_value", "N/A")
+                
+
                 }
                 st.json(metrics)
     
@@ -602,4 +678,12 @@ if __name__ == "__main__":
     # st.write(f"MLflow Tracking URI: {mlflow.get_tracking_uri()}")
     # print("🎯 Kiểm tra trên DagsHub: https://dagshub.com/Dung2204/MINST.mlflow/")
     # # # cd "C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App"
-    # ClassificationMinst.py
+    # ClassificationMinst.
+    
+
+
+
+    ## thay vì decision tree là gini và entropy thì -> chỉ còn entropy với chọn độ sâu của cây
+    ## bổ sung thêm Chọn số folds (KFold Cross-Validation) ở cả 2 phần decsion tree và svms
+    ## cập nhật lại phần demo , vì nó đang không sử dụng dữ liệu ở phần huấn luyện
+  
