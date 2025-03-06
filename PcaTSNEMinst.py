@@ -268,7 +268,7 @@ def run_PcaTSNEMinst_app():
                 X_pca = pca.fit_transform(X)
 
                 # Tiêu đề và đường phân cách
-                st.markdown("---")
+                # st.markdown("---")
                 st.markdown("### Biểu đồ PCA với Đường Xu hướng")
 
                 # Cho phép người dùng chọn loại biểu đồ (2D hoặc 3D)
