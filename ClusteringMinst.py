@@ -940,16 +940,16 @@ def run_ClusteringMinst_app():
                 # Hiển thị tham số đã log
                 st.markdown("### Tham số đã log")
                 params = {}
-                algorithm = selected_run.data.params.get("algorithm", "N/A")
-                params["Algorithm"] = algorithm
+                # algorithm = selected_run.data.params.get("algorithm", "N/A")
+                # params["Algorithm"] = algorithm
 
-                if algorithm == "K-means":
-                    params["K"] = selected_run.data.params.get("k", "N/A")
-                    params["Max Iterations"] = selected_run.data.params.get("max_iter", "N/A")
-                elif algorithm == "DBSCAN":
-                    params["EPS"] = selected_run.data.params.get("eps", "N/A")
-                    params["Min Samples"] = selected_run.data.params.get("min_samples", "N/A")
-                    params["Preprocess Noise"] = selected_run.data.params.get("preprocess_noise", "N/A")
+                # if algorithm == "K-means":
+                params["K"] = selected_run.data.params.get("k", "N/A")
+                params["Max Iterations"] = selected_run.data.params.get("max_iter", "N/A")
+                # elif algorithm == "DBSCAN":
+                params["EPS"] = selected_run.data.params.get("eps", "N/A")
+                params["Min Samples"] = selected_run.data.params.get("min_samples", "N/A")
+                params["Preprocess Noise"] = selected_run.data.params.get("preprocess_noise", "N/A")
                     # params["Normalize Data"] = selected_run.data.params.get("normalize_data", "N/A")
                 
                 st.json(params)
@@ -957,16 +957,16 @@ def run_ClusteringMinst_app():
                 # Hiển thị chỉ số đã log
                 st.markdown("### Chỉ số đã log")
                 metrics = {}
-                if algorithm == "K-means":
-                    metrics["Inertia"] = selected_run.data.metrics.get("inertia", "N/A")
-                elif algorithm == "DBSCAN":
-                    metrics["Number of Clusters"] = selected_run.data.metrics.get("num_clusters", "N/A")
-                    metrics["Noise Points"] = selected_run.data.metrics.get("noise_points", "N/A")
+                # if algorithm == "K-means":
+                metrics["Inertia"] = selected_run.data.metrics.get("inertia", "N/A")
+                # elif algorithm == "DBSCAN":
+                metrics["Number of Clusters"] = selected_run.data.metrics.get("num_clusters", "N/A")
+                metrics["Noise Points"] = selected_run.data.metrics.get("noise_points", "N/A")
                     # Thêm kích thước của từng cụm nếu có
-                    for key, value in selected_run.data.metrics.items():
-                        if key.startswith("cluster_") and key.endswith("_size"):
-                            cluster_id = key.split("_")[1]
-                            metrics[f"Cluster {cluster_id} Size"] = value
+                for key, value in selected_run.data.metrics.items():
+                    if key.startswith("cluster_") and key.endswith("_size"):
+                        cluster_id = key.split("_")[1]
+                        metrics[f"Cluster {cluster_id} Size"] = value
                 
                 st.json(metrics)
 
@@ -988,7 +988,6 @@ if __name__ == "__main__":
 
 
 # # # # cd "C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\BaiThucHanh4"
-
 
 
 
