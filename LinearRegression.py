@@ -3,16 +3,16 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from scipy.stats import zscore
-import seaborn as sns
+
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import SGDRegressor,LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
-from mpl_toolkits.mplot3d import Axes3D
+import time
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
-import joblib
 import mlflow
+
 from mlflow.tracking import MlflowClient
 
 def run_LinearRegression_app():
@@ -208,53 +208,45 @@ def run_LinearRegression_app():
             - $$( epsilon )$$: Sai số ngẫu nhiên.
             """)
             st.markdown("---")  
-            st.markdown("""            
-            ### 📊 **Ví dụ đơn giản**
-            Giả sử bạn muốn dự đoán giá nhà (\\( Y \\)) dựa trên diện tích (\\( X \\)):
-            $$
-            Y = 50 + 10X
-            $$
-            - $$( w_0 = 50) $$: Giá trị cơ bản (intercept).
-            - $$( w_1 = 10) $$: Hệ số cho thấy mỗi đơn vị diện tích tăng thêm làm giá nhà tăng 10 đơn vị.
-            """)
+            st.markdown("**Minh họa Hồi quy Tuyến tính Đơn giản**")
+            # Tạo dữ liệu mẫu
+            w0 = st.number_input("Nhập giá trị w0 (Intercept)", value=2.5)
+            w1 = st.number_input("Nhập giá trị w1 (Slope)", value=1.0)
 
-            st.markdown("### 📊 **Ví dụ minh họa với dữ liệu chiều cao và cân nặng**")
-            X = np.array([[147], [150], [153], [158], [163], [165], [168], [170], [173], [175], [178], [180], [183]])
-            y = np.array([[49], [50], [51], [54], [58], [59], [60], [62], [63], [64], [66], [67], [68]])
+            # Nhập số lượng điểm dữ liệu
+            num_points = st.slider("Chọn số lượng điểm dữ liệu", 10, 100, 50)
 
-            # Thêm cột 1 vào X để tính intercept (w_0)
-            one = np.ones((X.shape[0], 1))
-            Xbar = np.concatenate((one, X), axis=1)
+            # Sinh dữ liệu X từ người dùng nhập vào
+            x = np.linspace(0, 10, num_points)
+            y = w1 * x + w0 + np.random.randn(num_points) * 3  # Thêm nhiễu vào dữ liệu
 
-            # Tính toán các trọng số (weights) của đường hồi quy
-            A = np.dot(Xbar.T, Xbar)
-            b = np.dot(Xbar.T, y)
-            w = np.dot(np.linalg.pinv(A), b)
+            # Chuyển đổi x thành dạng ma trận cột
+            X = x.reshape(-1, 1)
 
-            # Chuẩn bị đường hồi quy
-            w_0 = w[0][0]
-            w_1 = w[1][0]
-            x0 = np.linspace(145, 185, 2)
-            y0 = w_0 + w_1 * x0
+            # Huấn luyện mô hình hồi quy tuyến tính
+            model = LinearRegression()
+            model.fit(X, y)
+
+            # Dự đoán giá trị
+            y_pred = model.predict(X)
+
+            # Hiển thị giá trị w0 và w1 học được
+            st.write(f"Giá trị w0 (Intercept) học được: {model.intercept_:.3f}")
+            st.write(f"Giá trị w1 (Slope) học được: {model.coef_[0]:.3f}")
 
             # Vẽ biểu đồ
             fig, ax = plt.subplots()
-            ax.plot(X.T, y.T, 'ro')  # Dữ liệu thực tế
-            ax.plot(x0, y0, label='Đường hồi quy')   # Đường hồi quy
-            ax.set_xlim(140, 190)
-            ax.set_ylim(45, 75)
-            ax.set_xlabel('Chiều cao (cm)')
-            ax.set_ylabel('Cân nặng (kg)')
+            ax.scatter(x, y, color='blue', label='Dữ liệu thực tế')
+            ax.plot(x, y_pred, color='red', linewidth=2, label='Hồi quy Tuyến tính')
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
             ax.legend()
+            
 
-            # Hiển thị biểu đồ trên Streamlit
+            # Hiển thị biểu đồ trong Streamlit
             st.pyplot(fig)
 
-            # In kết quả w bên dưới biểu đồ
-            st.markdown("**Kết quả trọng số (weights):**")
-            st.write(f"w = [{w_0}, {w_1}]")
-
-
+            
                         
             
         elif option == "Hồi quy tuyến tính bội":
@@ -277,121 +269,41 @@ def run_LinearRegression_app():
             - $$( w_1, w_2, ..., w_n )$$: Các hệ số hồi quy (weights).
             - $$(epsilon)$$: Sai số ngẫu nhiên.
             """)
-            
-            st.markdown("---") 
-            st.markdown("### 📊 **Ví dụ minh họa: Dự đoán giá nhà**")
-            st.markdown("""
-            **Dữ liệu mẫu:**
-            - Diện tích ($$X_1$$ (m²)): 
-                - [40, 50, 60, 70, 80, 90]
-            - Số phòng $$(X_2)$$: 
-                - [1, 2, 3, 4, 5, 6]
-            - Giá nhà (Y, triệu VNĐ): 
-                - [150, 200, 250, 300, 350, 400]
-            """)
+            np.random.seed(42)
+            X1 = np.random.rand(100) * 10  # Biến độc lập thứ nhất
+            X2 = np.random.rand(100) * 10  # Biến độc lập thứ hai
+            Y = 3 + 2 * X1 + 1.5 * X2 + np.random.normal(0, 2, 100)  # Phương trình Y = 3 + 2X1 + 1.5X2 + nhiễu
 
-            # Dữ liệu mẫu
-            X1 = np.array([[40],[50], [60], [70], [80], [90]])  # Diện tích
-            X2 = np.array([[1],[2], [3], [4], [5], [6]])     # Số phòng
-            Y = np.array([[150],[200], [250], [300], [350], [400]])  # Giá nhà
+            # Định hình lại dữ liệu để phù hợp với mô hình
+            X = np.column_stack((X1, X2))
 
-            # Kết hợp các biến độc lập thành ma trận
-            one = np.ones((X1.shape[0], 1))  # Cột 1 cho intercept
-            Xbar = np.concatenate((one, X1, X2), axis=1)  # Ma trận [1, X1, X2]
+            # Huấn luyện mô hình hồi quy tuyến tính
+            model = LinearRegression()
+            model.fit(X, Y)
 
-            # Tính toán các trọng số (weights)
-            A = np.dot(Xbar.T, Xbar)
-            b = np.dot(Xbar.T, Y)
-            w = np.dot(np.linalg.pinv(A), b)
-
-            # Trích xuất w_0, w_1, w_2
-            w_0 = w[0][0]
-            w_1 = w[1][0]
-            w_2 = w[2][0]
-
-            # Chuẩn bị dữ liệu để vẽ biểu đồ 3D
-            X1_grid, X2_grid = np.meshgrid(np.linspace(40, 90, 10), np.linspace(1, 6, 10))
-            Y_pred = w_0 + w_1 * X1_grid + w_2 * X2_grid
+            # Dự đoán giá trị Y dựa trên mô hình
+            X1_grid, X2_grid = np.meshgrid(np.linspace(0, 10, 20), np.linspace(0, 10, 20))
+            Y_pred = model.intercept_ + model.coef_[0] * X1_grid + model.coef_[1] * X2_grid
 
             # Vẽ biểu đồ 3D
-            fig = plt.figure(figsize=(10, 8))
+            fig = plt.figure(figsize=(10, 7))
             ax = fig.add_subplot(111, projection='3d')
-            ax.scatter(X1, X2, Y, c='r', marker='o', label='Dữ liệu thực tế')
-            ax.plot_surface(X1_grid, X2_grid, Y_pred, alpha=0.5, cmap='viridis', label='Mặt phẳng hồi quy')
-            ax.set_xlabel('Diện tích (m²)')
-            ax.set_ylabel('Số phòng')
-            ax.set_zlabel('Giá nhà (triệu VNĐ)')
-            ax.legend()
+            ax.scatter(X1, X2, Y, color='red', label='Dữ liệu thực tế')
+            ax.plot_surface(X1_grid, X2_grid, Y_pred, color='cyan', alpha=0.5)
 
-            # Hiển thị biểu đồ trên Streamlit
+            # Nhãn và tiêu đề
+            ax.set_xlabel('X1')
+            ax.set_ylabel('X2')
+            ax.set_zlabel('Y')
+            ax.set_title('Minh họa hồi quy tuyến tính bội')
+            plt.legend()
             st.pyplot(fig)
-
-            # In kết quả w
-            st.markdown("**Kết quả trọng số (weights):**")
-            st.write(f"w = [{w_0:.4f}, {w_1:.4f}, {w_2:.4f}]")
             st.markdown("""
-            - $$( w_0 )$$: Hệ số chặn (intercept).
-            - $$( w_1 )$$: Hệ số cho biến diện tích $$(X_1)$$.
-            - $$( w_2 )$$: Hệ số cho biến số phòng $$(X_2)$$.
+            **Giải thích biểu đồ Hồi quy tuyến tính bội:**
+            - **🔴 Các điểm đỏ:** Biểu diễn các giá trị thực tế của dữ liệu  
+            - **📈 Mặt phẳng màu xanh:** Là mặt phẳng hồi quy, thể hiện mối quan hệ tuyến tính giữa biến phụ thuộc $$( Y )$$ và hai biến độc lập $$( X_1, X_2 )$$.  
             """)
-
-            
-            st.markdown("### 📊 **Ví dụ: Dự đoán điểm số học tập**")
-            st.markdown("""
-            **Dữ liệu mẫu:**
-            - Số giờ học mỗi ngày $$(X_1)$$: 
-                - [1, 2, 3, 4, 5, 6, 7, 8]
-            - Số giờ ngủ mỗi đêm $$(X_2)$$: 
-                - [5.0, 5.5, 6.0, 6.5, 7.0, 8.0, 8.5, 9.0]
-            - Điểm số trung bình (Y): 
-                - [ 65, 70, 75, 80, 85, 90, 95, 100]
-            """)
-
-            # Dữ liệu mẫu
-            X1 = np.array([[1], [2], [3], [4], [5], [6], [7], [8]])  # Số giờ học
-            X2 = np.array([[5.0], [5.5], [6.0], [6.5], [7.0], [8.0], [8.5], [9.0]])  # Số giờ ngủ
-            Y = np.array([[65], [70], [75], [80], [85], [90], [95], [100]])  # Điểm số
-
-            # Kết hợp các biến độc lập thành ma trận
-            one = np.ones((X1.shape[0], 1))  # Cột 1 cho intercept
-            Xbar = np.concatenate((one, X1, X2), axis=1)  # Ma trận [1, X1, X2]
-
-            # Tính toán các trọng số (weights)
-            A = np.dot(Xbar.T, Xbar)
-            b = np.dot(Xbar.T, Y)
-            w = np.dot(np.linalg.pinv(A), b)
-
-            # Trích xuất w_0, w_1, w_2
-            w_0 = w[0][0]
-            w_1 = w[1][0]
-            w_2 = w[2][0]
-
-            # Chuẩn bị dữ liệu để vẽ biểu đồ 3D
-            X1_grid, X2_grid = np.meshgrid(np.linspace(1, 6, 10), np.linspace(5, 9, 10))
-            Y_pred = w_0 + w_1 * X1_grid + w_2 * X2_grid
-
-            # Vẽ biểu đồ 3D
-            fig = plt.figure(figsize=(10, 8))
-            ax = fig.add_subplot(111, projection='3d')
-            ax.scatter(X1, X2, Y, c='r', marker='o', label='Dữ liệu thực tế')
-            ax.plot_surface(X1_grid, X2_grid, Y_pred, alpha=0.5, cmap='viridis', label='Mặt phẳng hồi quy')
-            ax.set_xlabel('Số giờ học mỗi ngày')
-            ax.set_ylabel('Số giờ ngủ mỗi đêm')
-            ax.set_zlabel('Điểm số trung bình')
-            ax.legend()
-
-            # Hiển thị biểu đồ trên Streamlit
-            st.pyplot(fig)
-
-            # In kết quả w
-            st.markdown("**Kết quả trọng số (weights):**")
-            st.write(f"w = [{w_0:.4f}, {w_1:.4f}, {w_2:.4f}]")
-            st.markdown("""
-            -  $$( w_0 ) $$: Hệ số chặn (intercept).
-            -  $$( w_1 ) $$: Hệ số cho số giờ học  $$(X_1) $$.
-            -  $$( w_2 ) $$: Hệ số cho số giờ ngủ  $$(X_2) $$.
-            """)
-
+           
 
 
         elif option == "Hồi quy đa thức":
@@ -414,56 +326,40 @@ def run_LinearRegression_app():
             - $$( n )$$: Bậc của đa thức.
             - $$( epsilon )$$: Sai số ngẫu nhiên.
             """)
-            st.markdown("---") 
-            st.markdown("### 📊 **Ví dụ: Dự đoán tốc độ xe**")
-            st.markdown("""
-            **Dữ liệu mẫu:**
-            - Thời gian (X, giây): [0, 2, 4, 6, 8, 10]
-            - Tốc độ (Y, km/h): [0, 20, 40, 60, 80]
-            """)
+            np.random.seed(0)
+            x = np.linspace(-3, 3, 100)
+            y = 2 * x**3 - 5 * x**2 + 3 * x + np.random.randn(100) * 5  # Hàm đa thức có nhiễu
 
-            # Dữ liệu mẫu
-            X = np.array([0, 2, 4, 6, 8]).reshape(-1, 1)  # Thời gian (reshape để thành 2D)
-            Y = np.array([0, 20, 60, 80, 70])  # Tốc độ
+            # Chuyển đổi x thành dạng ma trận cột
+            X = x.reshape(-1, 1)
 
-            # Tạo các đặc trưng đa thức (bậc 2)
-            poly = PolynomialFeatures(degree=2)
+            # Điều chỉnh bậc của hồi quy qua thanh trượt
+            degree = st.slider("Chọn bậc của hồi quy đa thức:", 1, 10, 3)
+
+            # Biến đổi dữ liệu thành đa thức bậc do người dùng chọn
+            poly = PolynomialFeatures(degree=degree)
             X_poly = poly.fit_transform(X)
 
-            # Huấn luyện mô hình Linear Regression trên dữ liệu đa thức
+            # Huấn luyện mô hình hồi quy
             model = LinearRegression()
-            model.fit(X_poly, Y)
+            model.fit(X_poly, y)
 
-            # Lấy các hệ số
-            w_0 = model.intercept_  # Hệ số chặn
-            w = model.coef_  # Hệ số (w_1, w_2, ...)
-            w_1, w_2 = w[1], w[2]  # Trích xuất w_1 và w_2 (bậc 2)
-
-            # Chuẩn bị dữ liệu để vẽ
-            X_smooth = np.linspace(0, 10, 100).reshape(-1, 1)
-            X_poly_smooth = poly.transform(X_smooth)
-            Y_pred = model.predict(X_poly_smooth)
+            # Dự đoán giá trị
+            y_pred = model.predict(X_poly)
 
             # Vẽ biểu đồ
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.scatter(X, Y, color='red', label='Dữ liệu thực tế')
-            ax.plot(X_smooth, Y_pred, color='blue', label='Đường cong đa thức (bậc 2)')
-            ax.set_xlabel('Thời gian (giây)')
-            ax.set_ylabel('Tốc độ (km/h)')
-            ax.set_title('Polynomial Regression: Tốc độ xe theo thời gian')
+            fig, ax = plt.subplots()
+            ax.scatter(x, y, color='blue', label='Dữ liệu thực tế')
+            ax.plot(x, y_pred, color='red', linewidth=2, label=f'Hồi quy Đa thức bậc {degree}')
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
             ax.legend()
+            ax.set_title('Minh họa Hồi quy Đa thức')
 
-            # Hiển thị biểu đồ trên Streamlit
+            # Hiển thị biểu đồ trong Streamlit
             st.pyplot(fig)
 
-            # In kết quả w
-            st.markdown("**Kết quả trọng số (weights):**")
-            st.write(f"w_0 = {w_0:.4f}, w_1 = {w_1:.4f}, w_2 = {w_2:.4f}")
-            st.markdown("""
-            - $$( w_0 )$$: Hệ số chặn.
-            - $$( w_1 )$$: Hệ số cho $$( X )$$.
-            - $$( w_2 )$$: Hệ số cho $$( X^2 )$$.
-            """)
+
 
          # ---------------- Huấn luyện & Kiểm thử mô hình ----------------
     with tab_train:
@@ -526,14 +422,13 @@ def run_LinearRegression_app():
 
 
         with st.expander("Huấn luyện mô hình"):   
-        #<--------------------------------Test---------------------------->
             if st.session_state.get("data_split", False):
                 # 1) Chọn mô hình
                 col_model, col_model_tip = st.columns([0.8, 0.2])
                 with col_model:
                     model_choice_to_train = st.selectbox("Chọn mô hình để huấn luyện:", 
                                                         ["Hồi quy đa biến (Multiple Regression) ", "Hồi quy đa thức (Polynomial Regression) "])
-            
+                
                 col_lr, col_lr_tip = st.columns([0.8, 0.2])
                 with col_lr:
                     lr_method = "constant"  # Gán cố định giá trị "constant"
@@ -544,7 +439,7 @@ def run_LinearRegression_app():
                             value=0.01, min_value=0.0001, max_value=1.0, 
                             step=0.0001, format="%.4f")
                 poly_degree = 1
-                if model_choice_to_train == "Hồi quy Đa thức":
+                if model_choice_to_train == "Hồi quy đa thức (Polynomial Regression) ":
                     col_poly, col_poly_tip = st.columns([0.8, 0.2])
                     with col_poly:
                         poly_degree = st.number_input("Chọn bậc của đa thức:", 
@@ -560,158 +455,151 @@ def run_LinearRegression_app():
                     y_val = st.session_state.y_val
                     X_test = st.session_state.X_test
                     y_test = st.session_state.y_test
-                    with st.spinner("Đang huấn luyện mô hình với Cross Validation..."):
-                        # Tự động tạo run_name
-                        run_name = f"{model_choice_to_train}_Run_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
-                        with mlflow.start_run(run_name=run_name) as run:
+                    
+                    # Tạo thanh trạng thái và text hiển thị phần trăm
+                    st.write("Đang huấn luyện mô hình...")
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    # Tự động tạo run_name
+                    run_name = f"{model_choice_to_train}_Run_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
+                    with mlflow.start_run(run_name=run_name) as run:
                             # Tham số cố định của mô hình
-                            max_iter = 1000
-                            tol = 1e-3
+                        max_iter = 1000
+                        tol = 1e-3
                             
                             # Cập nhật các tham số quan trọng vào dictionary
-                            params = {
-                                "model_choice": model_choice_to_train,
-                                "learning_rate_method": lr_method,
-                                "max_iter": max_iter,
-                                "num_folds": num_folds,
-                                "train_samples": X_train.shape[0],
-                                "validation_samples": X_val.shape[0],
-                                "test_samples": X_test.shape[0]
-                            }
-                            if lr_method == "constant" and eta0 is not None:
-                                params["eta0"] = eta0
-                            else:
-                                params["eta0"] = "N/A"
+                        params = {
+                            "model_choice": model_choice_to_train,
+                            "learning_rate_method": lr_method,
+                            "max_iter": max_iter,
+                            "num_folds": num_folds,
+                            "train_samples": X_train.shape[0],
+                            "validation_samples": X_val.shape[0],
+                            "test_samples": X_test.shape[0]
+                        }
+                        if lr_method == "constant" and eta0 is not None:
+                            params["eta0"] = eta0
+                        else:
+                            params["eta0"] = "N/A"
 
-                            if model_choice_to_train == "Hồi quy Đa thức":
-                                params["poly_degree"] = poly_degree
+                        if model_choice_to_train == "Hồi quy đa thức (Polynomial Regression) ":
+                            params["poly_degree"] = poly_degree
 
                             # Log các tham số quan trọng
-                            for key, value in params.items():
-                                mlflow.log_param(key, value)
+                        for key, value in params.items():
+                            mlflow.log_param(key, value)
 
-                            # Khởi tạo mô hình
-                            if model_choice_to_train == "Hồi quy Đa biến":
-                                if lr_method == "constant" and eta0 is not None:
-                                    model = SGDRegressor(learning_rate=lr_method, eta0=eta0, max_iter=max_iter, tol=tol)
-                                else:
-                                    model = SGDRegressor(learning_rate=lr_method, max_iter=max_iter, tol=tol)
+                        # Khởi tạo mô hình
+                        if model_choice_to_train == "Hồi quy đa biến (Multiple Regression) ":
+                            if lr_method == "constant" and eta0 is not None:
+                                model = SGDRegressor(learning_rate=lr_method, eta0=eta0, max_iter=max_iter, tol=tol)
                             else:
-                                if lr_method == "constant" and eta0 is not None:
-                                    model = Pipeline([
-                                        ('poly', PolynomialFeatures(degree=poly_degree)),
-                                        ('sgd', SGDRegressor(learning_rate=lr_method, eta0=eta0, max_iter=max_iter, tol=tol))
-                                    ])
-                                else:
-                                    model = Pipeline([
-                                        ('poly', PolynomialFeatures(degree=poly_degree)),
-                                        ('sgd', SGDRegressor(learning_rate=lr_method, max_iter=max_iter, tol=tol))
-                                    ])
+                                model = SGDRegressor(learning_rate=lr_method, max_iter=max_iter, tol=tol)
+                        else:
+                            if lr_method == "constant" and eta0 is not None:
+                                model = Pipeline([
+                                    ('poly', PolynomialFeatures(degree=poly_degree)),
+                                    ('sgd', SGDRegressor(learning_rate=lr_method, eta0=eta0, max_iter=max_iter, tol=tol))
+                                ])
+                            else:
+                                model = Pipeline([
+                                    ('poly', PolynomialFeatures(degree=poly_degree)),
+                                    ('sgd', SGDRegressor(learning_rate=lr_method, max_iter=max_iter, tol=tol))
+                                ])
 
-                            # Cross Validation
-                            cv_scores = cross_val_score(model, X_train, y_train, cv=num_folds, scoring='r2')
-                            # Log thêm các chỉ số phụ quan trọng từ CV
-                            mlflow.log_metric("mean_cv_score", np.mean(cv_scores))
-                            mlflow.log_metric("cv_scores_std", np.std(cv_scores))
-                            mlflow.log_metric("max_cv_score", np.max(cv_scores))
+                            # Bước 1: Cross Validation (0% -> 30%)
+                        status_text.text("Đang thực hiện Cross Validation (0%)...")
+                        cv_scores = cross_val_score(model, X_train, y_train, cv=num_folds, scoring='r2')
+                        for i in range(31):  # Giả lập tiến độ từ 0% đến 30%
+                            progress_bar.progress(i)
+                            status_text.text(f"Đang thực hiện Cross Validation ({i}%)...")
+                            time.sleep(0.05)  # Thêm độ trễ nhỏ để người dùng thấy tiến độ
                             
-                            model.fit(X_train, y_train)
-                            # Dự đoán trên tập Validation
-                            y_pred_val = model.predict(X_val)
-                            mse_val = mean_squared_error(y_val, y_pred_val)
-                            r2_val = r2_score(y_val, y_pred_val)
-                            y_pred_val_class = [1 if pred >= 0.5 else 0 for pred in y_pred_val]
-                            accuracy_val = accuracy_score(y_val, y_pred_val_class)
-                            # Dự đoán trên tập Test
-                            y_pred_test = model.predict(X_test)
-                            mse_test = mean_squared_error(y_test, y_pred_test)
-                            r2_test = r2_score(y_test, y_pred_test)
-                            y_pred_test_class = [1 if pred >= 0.5 else 0 for pred in y_pred_test]
-                            accuracy_test = accuracy_score(y_test, y_pred_test_class)
-
-                            # Log các chỉ số đánh giá
-                            mlflow.log_metric("validation_mse", mse_val)
-                            mlflow.log_metric("validation_r2", r2_val)
-                            mlflow.log_metric("validation_accuracy", accuracy_val)
-                            mlflow.log_metric("test_mse", mse_test)
-                            mlflow.log_metric("test_r2", r2_test)
-                            mlflow.log_metric("test_accuracy", accuracy_test)
-                            mlflow.sklearn.log_model(model, "model")
+                            # Log thêm các chỉ số phụ quan trọng từ CV
+                        mlflow.log_metric("mean_cv_score", np.mean(cv_scores))
+                        mlflow.log_metric("cv_scores_std", np.std(cv_scores))
+                        mlflow.log_metric("max_cv_score", np.max(cv_scores))
+                            
+                        # Bước 2: Fit mô hình (30% -> 80%)
+                        status_text.text("Đang huấn luyện mô hình trên tập Train (30%)...")
+                        model.fit(X_train, y_train)
+                        for i in range(31, 81):  # Giả lập tiến độ từ 30% đến 80%
+                            progress_bar.progress(i)
+                            status_text.text(f"Đang huấn luyện mô hình trên tập Train ({i}%)...")
+                            time.sleep(0.05)  # Thêm độ trễ nhỏ để người dùng thấy tiến độ
+                            
+                            # Bước 3: Dự đoán trên tập Validation và Test (80% -> 95%)
+                        status_text.text("Đang đánh giá mô hình trên tập Validation và Test (80%)...")
+                        y_pred_val = model.predict(X_val)
+                        mse_val = mean_squared_error(y_val, y_pred_val)
+                        r2_val = r2_score(y_val, y_pred_val)
+                        y_pred_val_class = [1 if pred >= 0.5 else 0 for pred in y_pred_val]
+                        accuracy_val = accuracy_score(y_val, y_pred_val_class)
+                            
+                        y_pred_test = model.predict(X_test)
+                        mse_test = mean_squared_error(y_test, y_pred_test)
+                        r2_test = r2_score(y_test, y_pred_test)
+                        y_pred_test_class = [1 if pred >= 0.5 else 0 for pred in y_pred_test]
+                        accuracy_test = accuracy_score(y_test, y_pred_test_class)
+                        for i in range(81, 96):  # Giả lập tiến độ từ 80% đến 95%
+                            progress_bar.progress(i)
+                            status_text.text(f"Đang đánh giá mô hình trên tập Validation và Test ({i}%)...")
+                            time.sleep(0.05)
+                            
+                            # Bước 4: Lưu kết quả và hoàn tất (95% -> 100%)
+                        status_text.text("Đang lưu kết quả và hoàn tất (95%)...")
+                        mlflow.log_metric("validation_mse", mse_val)
+                        mlflow.log_metric("validation_r2", r2_val)
+                        mlflow.log_metric("validation_accuracy", accuracy_val)
+                        mlflow.log_metric("test_mse", mse_test)
+                        mlflow.log_metric("test_r2", r2_test)
+                        mlflow.log_metric("test_accuracy", accuracy_test)
+                        mlflow.sklearn.log_model(model, "model")
 
                             # Lưu thông tin vào session_state
-                            st.session_state["run_id"] = run.info.run_id
-                            st.session_state["run_name"] = run_name
-                            st.session_state["accuracy_val"] = accuracy_val
-                            st.session_state["accuracy_test"] = accuracy_test
-                            st.session_state["params"] = params
-                            st.session_state["model"] = model
-                            st.session_state["models_trained"] = True
-                        
+                        st.session_state["run_id"] = run.info.run_id
+                        st.session_state["run_name"] = run_name
+                        st.session_state["accuracy_val"] = accuracy_val
+                        st.session_state["accuracy_test"] = accuracy_test
+                        st.session_state["params"] = params
+                        st.session_state["model"] = model
+                        st.session_state["models_trained"] = True
+                        for i in range(96, 101):  # Giả lập tiến độ từ 95% đến 100%
+                            progress_bar.progress(i)
+                            status_text.text(f"Đang lưu kết quả và hoàn tất ({i}%)...")
+                            time.sleep(0.05)
+
                         # Hiển thị kết quả
-                        results_df = pd.DataFrame({
-                        "Metric": ["Cross Validation Scores (R²)", "Mean CV Score (R²)", "Validation MSE", "Validation R²", "Validation Accuracy", "Test MSE", "Test R²", "Test Accuracy"],
+                    results_df = pd.DataFrame({
+                           "Metric": ["Cross Validation Scores (R²)", "Mean CV Score (R²)", "Validation MSE", "Validation R²", "Validation Accuracy", "Test MSE", "Test R²", "Test Accuracy"],
                         "Value": [
-                            ', '.join([f"{score:.2e}" for score in cv_scores]),  # Chuỗi các giá trị R²
-                            f"{np.mean(cv_scores):.2e}",
-                            f"{mse_val:.2e}",
-                            f"{r2_val:.2e}",
-                            f"{accuracy_val:.2%}",
-                            f"{mse_test:.2e}",
-                            f"{r2_test:.2e}",
-                            f"{accuracy_test:.2%}"
+                                ', '.join([f"{score:.2e}" for score in cv_scores]),
+                                f"{np.mean(cv_scores):.2e}",
+                                f"{mse_val:.2e}",
+                                f"{r2_val:.2e}",
+                                f"{accuracy_val:.2%}",
+                                f"{mse_test:.2e}",
+                                f"{r2_test:.2e}",
+                                f"{accuracy_test:.2%}"
                         ]
-                        })
-                        # Hiển thị bảng
-                        st.markdown("### 📊 Kết quả đánh giá mô hình")
-                        st.table(results_df)
+                    })
+                    st.markdown("### 📊 Kết quả đánh giá mô hình")
+                    st.table(results_df)
 
-
-                        st.markdown("---") 
-                        # Giải thích kết quả ngắn gọn hơn
-                        st.markdown("### ℹ️ Giải thích kết quả")
-                        st.markdown("""
+                    st.markdown("---") 
+                    st.markdown("### ℹ️ Giải thích kết quả")
+                    st.markdown("""
                         - **Cross Validation Scores (R²):** Đánh giá hiệu suất mô hình trên từng tập huấn luyện (fold).  
                         - **Mean CV Score (R²):** Trung bình R² của các fold, giá trị càng gần 1 càng tốt.  
                         - **MSE (Mean Squared Error):** Sai số bình phương trung bình, càng nhỏ càng tốt.  
                         - **R² (R-squared):** Đo lường độ phù hợp của mô hình, gần 1 là tốt.  
                         - **Accuracy (ngưỡng 0.5):** Tỷ lệ dự đoán đúng khi áp dụng ngưỡng 0.5.  
-                        """)
-                        
-                        metrics = ["Mean CV Score (R²)", "Validation MSE", "Validation R²", "Validation Accuracy", "Test MSE", "Test R²", "Test Accuracy"]
-                        values = [np.mean(cv_scores), mse_val, r2_val, accuracy_val, mse_test, r2_test, accuracy_test]
-
-                        # Vẽ biểu đồ cột cho các chỉ số chính
-                        # st.markdown("### 📊 **Biểu đồ so sánh các chỉ số chính**")
-
-                        # fig, ax = plt.subplots(figsize=(8, 5))
-                        # sns.barplot(x=values, y=metrics, ax=ax, palette="coolwarm")
-
-                        # # Gán nhãn giá trị lên cột
-                        # for i, v in enumerate(values):
-                        #     ax.text(v, i, f"{v:.2e}", color='black', va='center')
-
-                        # ax.set_xlabel("Giá trị")
-                        # ax.set_ylabel("Chỉ số")
-                        # ax.set_title("So sánh các chỉ số chính")
-
-                        # st.pyplot(fig)
-
-                        # # Vẽ biểu đồ line cho Cross Validation Scores (R²)
-                        # st.markdown("### 📉 **Biểu đồ Cross Validation Scores (R²)**")
-
-                        # fig, ax = plt.subplots(figsize=(8, 4))
-                        # sns.lineplot(x=range(len(cv_scores)), y=cv_scores, marker='o', ax=ax, color='blue')
-                        # ax.axhline(np.mean(cv_scores), linestyle="--", color="red", label="Mean R²")  # Đường trung bình
-
-                        # ax.set_xlabel("Fold")
-                        # ax.set_ylabel("R² Score")
-                        # ax.set_title("Cross Validation Scores (R²)")
-                        # ax.legend()
-
-                        # st.pyplot(fig)
+                    """)
             else:
                 st.warning("Vui lòng chia tập dữ liệu trước.")
 
+    # ---------------- Tab 4: Dự đoán ----------------
     # ---------------- Tab 4: Dự đoán ----------------
     with tab_predict:
         st.header("Demo Dự đoán")
@@ -728,11 +616,26 @@ def run_LinearRegression_app():
                     options = list(sorted(df[feature].unique()))
                     value = st.selectbox(f"{feature}:", options)
                 input_values.append(value)
+            
             if st.button("Dự đoán"):
                 input_array = np.array(input_values).reshape(1, -1)
-                prediction = st.session_state.model.predict(input_array)[0]
+                model = st.session_state.model
+                prediction = model.predict(input_array)[0]
                 result = "Sống" if prediction >= 0.5 else "Không sống"
+                
+                # Lấy độ chính xác trên tập Test từ session_state
+                accuracy_test = st.session_state.get("accuracy_test", "Không có dữ liệu")
+                
+                # Hiển thị kết quả dự đoán và độ chính xác trên tập Test
                 st.write(f"**Dự đoán:** {result}")
+                st.write(f"**Độ chính xác của mô hình:** {accuracy_test:.2%}")
+                
+                # Thêm giải thích ngắn gọn
+                st.markdown("""
+                **Ghi chú:**
+                - Độ chính xác được tính trên tập Test, dựa trên ngưỡng 0.5 (prediction >= 0.5 là 'Sống', ngược lại là 'Không sống').
+                - Đây là chỉ số đánh giá khả năng dự đoán của mô hình trên dữ liệu chưa từng thấy.
+                """)
         else:
             st.warning("Vui lòng huấn luyện mô hình trước.")
 
