@@ -1,8 +1,3 @@
-<DOCUMENT>
-MLflow
-
-You need to enable JavaScript to run this app.</DOCUMENT>
-
 import streamlit as st
 import os
 import numpy as np
