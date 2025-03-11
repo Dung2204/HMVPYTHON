@@ -623,262 +623,266 @@ def run_ClusteringMinst_app():
                                 help=f"Tối đa: {train_images.shape[0]} mẫu")
         
         if st.button("🚀 Lấy mẫu dữ liệu"):
-            random_indices = np.random.choice(train_images.shape[0], sample_size, replace=False)
-            X_train = train_images[random_indices].reshape(sample_size, -1)
-            st.session_state.X_train = X_train
-            st.session_state.X_test = test_images.reshape(test_images.shape[0], -1)
-            st.success(f"✅ Đã lấy {sample_size} mẫu từ tập huấn luyện.")
+            try:
+                random_indices = np.random.choice(train_images.shape[0], sample_size, replace=False)
+                X_train = train_images[random_indices].reshape(sample_size, -1)
+                st.write("Shape của X_train:", X_train.shape)  # Kiểm tra
+                st.session_state.X_train = X_train
+                st.session_state.X_test = test_images.reshape(test_images.shape[0], -1)
+                st.success(f"✅ Đã lấy {sample_size} mẫu từ tập huấn luyện.")
+            except Exception as e:
+                st.error(f"Lỗi khi lấy mẫu dữ liệu: {str(e)}")
 
         # Kiểm tra xem dữ liệu đã được lấy chưa
-            if "X_train" in st.session_state and "X_test" in st.session_state:
-                X_train = st.session_state.X_train
-                X_test = st.session_state.X_test
+        if "X_train" in st.session_state and "X_test" in st.session_state:
+            X_train = st.session_state.X_train
+            X_test = st.session_state.X_test
 
-                # Chuẩn hóa dữ liệu
-                scaler = StandardScaler()
-                X_train_scaled = scaler.fit_transform(X_train)
-                X_test_scaled = scaler.transform(X_test)
+            # Chuẩn hóa dữ liệu
+            scaler = StandardScaler()
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
 
-                # Giảm chiều bằng PCA (2D) để phân cụm
-                pca = PCA(n_components=2)
-                X_train_pca = pca.fit_transform(X_train_scaled)
+            # Giảm chiều bằng PCA (2D) để phân cụm
+            pca = PCA(n_components=2)
+            X_train_pca = pca.fit_transform(X_train_scaled)
 
-                # Lưu các đối tượng vào session_state để sử dụng sau
-                st.session_state.scaler = scaler
-                st.session_state.pca = pca
-                st.session_state.X_train_pca = X_train_pca
+            # Lưu các đối tượng vào session_state để sử dụng sau
+            st.session_state.scaler = scaler
+            st.session_state.pca = pca
+            st.session_state.X_train_pca = X_train_pca
 
-                # Chọn phương pháp phân cụm
-                clustering_method = st.selectbox("🔹 Chọn phương pháp phân cụm:", ["K-means", "DBSCAN"])
+            # Chọn phương pháp phân cụm
+            clustering_method = st.selectbox("🔹 Chọn phương pháp phân cụm:", ["K-means", "DBSCAN"])
 
-                if clustering_method == "K-means":
-                    k = st.slider("🔸 Số cụm (K-means)", min_value=2, max_value=20, value=10)
+            if clustering_method == "K-means":
+                k = st.slider("🔸 Số cụm (K-means)", min_value=2, max_value=20, value=10)
 
-                    if st.button("🚀 Chạy K-means"):
-                        # Khởi tạo thanh tiến trình
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
+                if st.button("🚀 Chạy K-means"):
+                    # Khởi tạo thanh tiến trình
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                            
+                    with mlflow.start_run():
+                        start_time = time.time()
+
+                        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
                                 
-                        with mlflow.start_run():
-                            start_time = time.time()
-
-                            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-                                    
-                            # Giả lập tiến trình (vì KMeans không cung cấp callback chi tiết)
-                            for i in range(100):
-                                time.sleep(0.01)  # Giả lập thời gian xử lý nhỏ
-                                progress_bar.progress(i + 1)
-                                status_text.text(f"Tiến trình huấn luyện: {i + 1}%")
-                                    
-                            # Huấn luyện mô hình
-                            labels = kmeans.fit_predict(X_train_pca)
-                            progress_bar.progress(100)  # Đảm bảo thanh đạt 100%
-                            status_text.text("Hoàn tất huấn luyện!")
-
-                            end_time = time.time()
-                            clustering_time = round(end_time - start_time, 2)
-
-                            mlflow.log_param("algorithm", "K-means")
-                            mlflow.log_param("k", k)
-                            mlflow.log_param("max_iter", 300)
-
-                            # Tính Inertia và độ chính xác
-                            inertia = kmeans.inertia_
-                            max_possible_inertia = np.sum(np.sum((X_train_pca - np.mean(X_train_pca, axis=0)) ** 2))
-                            accuracy_percentage = (1 - (inertia / max_possible_inertia)) * 100 if max_possible_inertia > 0 else 0.0
-                            accuracy_percentage = max(0.0, min(100.0, accuracy_percentage))
-                            accuracy_percentage = round(accuracy_percentage, 2)
-                            num_samples = X_train_pca.shape[0]
-                            num_clusters_actual = len(set(labels))
-                            mlflow.log_metric("inertia", inertia)
-
-                            # Hiển thị kết quả
-                            with st.container(border=True):
-                                st.write("### Kết quả phân cụm và thông tin của K-Means:")
-                                st.write(f"**Phương pháp phân cụm đã chọn:** K-means")
-                                st.write(f"**Số cụm đã chọn:** {k}")
-                                st.write(f"**Số cụm thực tế:** {num_clusters_actual}")
-                                st.write(f"**Số mẫu đã xử lý:** {num_samples}")
-                                st.write(f"**Thời gian phân cụm:** {clustering_time} giây")
-                                st.write(f"**Độ chính xác của phân cụm K-Means:** {accuracy_percentage:.2f}%")
-
-                                st.write("### Biểu đồ minh họa phân cụm K-Means")
-                                fig, ax = plt.subplots(figsize=(8, 6))
-                                sns.scatterplot(x=X_train_pca[:, 0], y=X_train_pca[:, 1], hue=labels, palette="deep", ax=ax)
-                                ax.set_title("Phân cụm K-Means (PCA 2D)")
-                                ax.set_xlabel("Thành phần chính 1")
-                                ax.set_ylabel("Thành phần chính 2")
-                                ax.legend(title="Cụm")
-                                st.pyplot(fig)
-
-                                mlflow.sklearn.log_model(kmeans, "kmeans_model")
-                                st.session_state.clustering_model = kmeans
-                                st.session_state.clustering_method = "K-means"
-                                st.session_state.labels = labels
-
-                            mlflow.end_run()
-
-                elif clustering_method == "DBSCAN":
-                    # Tham số DBSCAN
-                    eps = st.slider("🔸 Bán kính vùng lân cận (eps):", min_value=0.1, max_value=5.0, value=0.5, step=0.1)
-                    min_samples = st.slider("🔸 Số lượng điểm tối thiểu:", min_value=1, max_value=20, value=10)
-
-                    # Tùy chọn tiền xử lý để giảm nhiễu
-                    st.markdown("**Tùy chọn giảm nhiễu**")
-                    preprocess_noise = st.checkbox("Loại bỏ ngoại lệ trước khi phân cụm (dùng Z-score)", value=False)
-
-                    if st.button("🚀 Chạy DBSCAN"):
-                        # Khởi tạo thanh tiến trình
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-
-                        with mlflow.start_run():
-                            start_time = time.time()
-
-                            # Sao chép dữ liệu để xử lý
-                            X_processed = X_train_pca.copy()
-
-                            # 1. Tiền xử lý: Loại bỏ ngoại lệ bằng Z-score nếu được chọn
-                            if preprocess_noise:
-                                z_scores = np.abs(stats.zscore(X_processed))
-                                threshold = 3  # Ngưỡng Z-score (có thể điều chỉnh)
-                                mask = (z_scores < threshold).all(axis=1)
-                                X_processed = X_processed[mask]
-                                st.write(f"Đã loại bỏ {X_train_pca.shape[0] - X_processed.shape[0]} điểm ngoại lệ bằng Z-score.")
-
-                            # Khởi tạo DBSCAN
-                            dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-
-                            # Giả lập tiến trình
-                            for i in range(100):
-                                time.sleep(0.01)  # Giả lập thời gian xử lý nhỏ
-                                progress_bar.progress(i + 1)
-                                status_text.text(f"Tiến trình huấn luyện: {i + 1}%")
-
-                            # Huấn luyện mô hình
-                            labels = dbscan.fit_predict(X_processed)
-                            progress_bar.progress(100)  # Đảm bảo thanh đạt 100%
-                            status_text.text("Hoàn tất huấn luyện!")
-
-                            end_time = time.time()
-                            clustering_time = round(end_time - start_time, 2)
-
-                            # Ghi log tham số vào MLflow
-                            mlflow.log_param("algorithm", "DBSCAN")
-                            mlflow.log_param("eps", eps)
-                            mlflow.log_param("min_samples", min_samples)
-                            mlflow.log_param("preprocess_noise", preprocess_noise)
-
-                            # Tính toán số cụm và nhiễu
-                            num_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-                            noise_points = np.sum(labels == -1)
-                            num_samples = X_processed.shape[0]
-
-                            # Hiển thị kết quả
-                            with st.container(border=True):
-                                st.write("### Kết quả phân cụm và thông tin của DBSCAN:")
-                                st.write(f"**Phương pháp phân cụm đã chọn:** DBSCAN")
-                                st.write(f"**Số cụm đã chọn:** Không áp dụng (tự động xác định)")
-                                st.write(f"**Số cụm thực tế:** {num_clusters}")
-                                st.write(f"**Số mẫu đã xử lý:** {num_samples}")
-                                st.write(f"**Thời gian phân cụm:** {clustering_time} giây")
-                                st.write(f"**Số lượng điểm nhiễu (Noise Points):** {noise_points} ({round((noise_points / num_samples) * 100, 2)}%)")
-
-                                # Thêm biểu đồ minh họa phân cụm
-                                st.write("### Biểu đồ minh họa phân cụm DBSCAN")
-                                fig, ax = plt.subplots(figsize=(8, 6))
-                                scatter = sns.scatterplot(
-                                    x=X_processed[:, 0], 
-                                    y=X_processed[:, 1], 
-                                    hue=labels, 
-                                    palette="deep", 
-                                    ax=ax, 
-                                    legend="brief"
-                                )
-
-                                # Tùy chỉnh tiêu đề và nhãn trục
-                                ax.set_title("Phân cụm DBSCAN (PCA 2D)")
-                                ax.set_xlabel("Thành phần chính 1")
-                                ax.set_ylabel("Thành phần chính 2")
-
-                                # Đếm số lượng điểm trong mỗi cụm
-                                cluster_counts = Counter(labels)
-                                total_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-
-                                # Tùy chỉnh legend
-                                max_display_clusters = 5
-                                top_clusters = sorted(
-                                    [(cluster, count) for cluster, count in cluster_counts.items() if cluster != -1],
-                                    key=lambda x: x[1],
-                                    reverse=True
-                                )[:max_display_clusters]
-
-                                # Tạo nhãn mới cho legend
-                                new_labels = labels.copy()
-                                other_clusters = set(cluster_counts.keys()) - set([c[0] for c in top_clusters]) - {-1}
-                                for cluster in other_clusters:
-                                    if cluster != -1:
-                                        new_labels[new_labels == cluster] = -2  # Gộp các cụm nhỏ vào "Others"
-
-                                # Cập nhật scatter plot với nhãn mới
-                                ax.clear()
-                                scatter = sns.scatterplot(
-                                    x=X_processed[:, 0], 
-                                    y=X_processed[:, 1], 
-                                    hue=new_labels, 
-                                    palette="deep", 
-                                    ax=ax
-                                )
-
-                                # Tùy chỉnh lại tiêu đề và nhãn trục
-                                ax.set_title("Phân cụm DBSCAN (PCA 2D)")
-                                ax.set_xlabel("Thành phần chính 1")
-                                ax.set_ylabel("Thành phần chính 2")
-
-                                # Tùy chỉnh legend
-                                legend_labels = {label: f"Cụm {label}" for label in set(new_labels) if label != -1 and label != -2}
-                                legend_labels[-1] = "Nhiễu (-1)"
-                                legend_labels[-2] = f"Khác ({len(other_clusters)} cụm)"
-
-                                # Sắp xếp lại legend để "Nhiễu" lên đầu
-                                handles, labels = scatter.get_legend_handles_labels()
-                                labels_with_handles = [(legend_labels[int(label)] if label in legend_labels else f"Cụm {label}", handle) 
-                                                    for label, handle in zip(labels, handles)]
-                                labels_with_handles.sort(key=lambda x: x[0].startswith("Nhiễu"), reverse=True)
-
-                                # Tạo legend mới
-                                new_handles = [item[1] for item in labels_with_handles]
-                                new_labels = [item[0] for item in labels_with_handles]
-                                scatter.legend(new_handles, new_labels, title=f"Tổng số cụm: {total_clusters}", 
-                                            loc="center left", bbox_to_anchor=(1, 0.5), fontsize=10)
-
-                                # Hiển thị biểu đồ
-                                st.pyplot(fig)
+                        # Giả lập tiến trình (vì KMeans không cung cấp callback chi tiết)
+                        for i in range(100):
+                            time.sleep(0.01)  # Giả lập thời gian xử lý nhỏ
+                            progress_bar.progress(i + 1)
+                            status_text.text(f"Tiến trình huấn luyện: {i + 1}%")
                                 
-                                # Ghi log các chỉ số vào MLflow
-                                mlflow.log_metric("num_clusters", num_clusters)
-                                mlflow.log_metric("noise_points", noise_points)
-                                for cluster, count in Counter(labels).items():
-                                    if cluster != -1:
-                                        mlflow.log_metric(f"cluster_{cluster}_size", count)
+                        # Huấn luyện mô hình
+                        labels = kmeans.fit_predict(X_train_pca)
+                        progress_bar.progress(100)  # Đảm bảo thanh đạt 100%
+                        status_text.text("Hoàn tất huấn luyện!")
 
-                                # Lưu mô hình
-                                mlflow.sklearn.log_model(dbscan, "dbscan_model")
-                                st.session_state.clustering_model = dbscan
-                                st.session_state.clustering_method = "DBSCAN"
-                                st.session_state.labels = labels
+                        end_time = time.time()
+                        clustering_time = round(end_time - start_time, 2)
 
-                            # Gợi ý điều chỉnh tham số nếu nhiễu vẫn cao
-                            if noise_points / num_samples > 0.3:  # Nếu nhiễu chiếm hơn 30%
-                                st.warning(
-                                    f"Cảnh báo: Tỷ lệ nhiễu cao ({round((noise_points / num_samples) * 100, 2)}%). "
-                                    "Hãy thử tăng `eps` hoặc giảm `min_samples` để giảm nhiễu."
-                                )
+                        mlflow.log_param("algorithm", "K-means")
+                        mlflow.log_param("k", k)
+                        mlflow.log_param("max_iter", 300)
+
+                        # Tính Inertia và độ chính xác
+                        inertia = kmeans.inertia_
+                        max_possible_inertia = np.sum(np.sum((X_train_pca - np.mean(X_train_pca, axis=0)) ** 2))
+                        accuracy_percentage = (1 - (inertia / max_possible_inertia)) * 100 if max_possible_inertia > 0 else 0.0
+                        accuracy_percentage = max(0.0, min(100.0, accuracy_percentage))
+                        accuracy_percentage = round(accuracy_percentage, 2)
+                        num_samples = X_train_pca.shape[0]
+                        num_clusters_actual = len(set(labels))
+                        mlflow.log_metric("inertia", inertia)
+
+                        # Hiển thị kết quả
+                        with st.container(border=True):
+                            st.write("### Kết quả phân cụm và thông tin của K-Means:")
+                            st.write(f"**Phương pháp phân cụm đã chọn:** K-means")
+                            st.write(f"**Số cụm đã chọn:** {k}")
+                            st.write(f"**Số cụm thực tế:** {num_clusters_actual}")
+                            st.write(f"**Số mẫu đã xử lý:** {num_samples}")
+                            st.write(f"**Thời gian phân cụm:** {clustering_time} giây")
+                            st.write(f"**Độ chính xác của phân cụm K-Means:** {accuracy_percentage:.2f}%")
+
+                            st.write("### Biểu đồ minh họa phân cụm K-Means")
+                            fig, ax = plt.subplots(figsize=(8, 6))
+                            sns.scatterplot(x=X_train_pca[:, 0], y=X_train_pca[:, 1], hue=labels, palette="deep", ax=ax)
+                            ax.set_title("Phân cụm K-Means (PCA 2D)")
+                            ax.set_xlabel("Thành phần chính 1")
+                            ax.set_ylabel("Thành phần chính 2")
+                            ax.legend(title="Cụm")
+                            st.pyplot(fig)
+
+                            mlflow.sklearn.log_model(kmeans, "kmeans_model")
+                            st.session_state.clustering_model = kmeans
+                            st.session_state.clustering_method = "K-means"
+                            st.session_state.labels = labels
 
                         mlflow.end_run()
 
-            else:
-                st.info("📌 Vui lòng chọn số lượng mẫu và nhấn 'Lấy mẫu dữ liệu' để bắt đầu xử lý.")
+            elif clustering_method == "DBSCAN":
+                # Tham số DBSCAN
+                eps = st.slider("🔸 Bán kính vùng lân cận (eps):", min_value=0.1, max_value=5.0, value=0.5, step=0.1)
+                min_samples = st.slider("🔸 Số lượng điểm tối thiểu:", min_value=1, max_value=20, value=10)
+
+                # Tùy chọn tiền xử lý để giảm nhiễu
+                st.markdown("**Tùy chọn giảm nhiễu**")
+                preprocess_noise = st.checkbox("Loại bỏ ngoại lệ trước khi phân cụm (dùng Z-score)", value=False)
+
+                if st.button("🚀 Chạy DBSCAN"):
+                    # Khởi tạo thanh tiến trình
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+
+                    with mlflow.start_run():
+                        start_time = time.time()
+
+                        # Sao chép dữ liệu để xử lý
+                        X_processed = X_train_pca.copy()
+
+                        # 1. Tiền xử lý: Loại bỏ ngoại lệ bằng Z-score nếu được chọn
+                        if preprocess_noise:
+                            z_scores = np.abs(stats.zscore(X_processed))
+                            threshold = 3  # Ngưỡng Z-score (có thể điều chỉnh)
+                            mask = (z_scores < threshold).all(axis=1)
+                            X_processed = X_processed[mask]
+                            st.write(f"Đã loại bỏ {X_train_pca.shape[0] - X_processed.shape[0]} điểm ngoại lệ bằng Z-score.")
+
+                        # Khởi tạo DBSCAN
+                        dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+
+                        # Giả lập tiến trình
+                        for i in range(100):
+                            time.sleep(0.01)  # Giả lập thời gian xử lý nhỏ
+                            progress_bar.progress(i + 1)
+                            status_text.text(f"Tiến trình huấn luyện: {i + 1}%")
+
+                        # Huấn luyện mô hình
+                        labels = dbscan.fit_predict(X_processed)
+                        progress_bar.progress(100)  # Đảm bảo thanh đạt 100%
+                        status_text.text("Hoàn tất huấn luyện!")
+
+                        end_time = time.time()
+                        clustering_time = round(end_time - start_time, 2)
+
+                        # Ghi log tham số vào MLflow
+                        mlflow.log_param("algorithm", "DBSCAN")
+                        mlflow.log_param("eps", eps)
+                        mlflow.log_param("min_samples", min_samples)
+                        mlflow.log_param("preprocess_noise", preprocess_noise)
+
+                        # Tính toán số cụm và nhiễu
+                        num_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+                        noise_points = np.sum(labels == -1)
+                        num_samples = X_processed.shape[0]
+
+                        # Hiển thị kết quả
+                        with st.container(border=True):
+                            st.write("### Kết quả phân cụm và thông tin của DBSCAN:")
+                            st.write(f"**Phương pháp phân cụm đã chọn:** DBSCAN")
+                            st.write(f"**Số cụm đã chọn:** Không áp dụng (tự động xác định)")
+                            st.write(f"**Số cụm thực tế:** {num_clusters}")
+                            st.write(f"**Số mẫu đã xử lý:** {num_samples}")
+                            st.write(f"**Thời gian phân cụm:** {clustering_time} giây")
+                            st.write(f"**Số lượng điểm nhiễu (Noise Points):** {noise_points} ({round((noise_points / num_samples) * 100, 2)}%)")
+
+                            # Thêm biểu đồ minh họa phân cụm
+                            st.write("### Biểu đồ minh họa phân cụm DBSCAN")
+                            fig, ax = plt.subplots(figsize=(8, 6))
+                            scatter = sns.scatterplot(
+                                x=X_processed[:, 0], 
+                                y=X_processed[:, 1], 
+                                hue=labels, 
+                                palette="deep", 
+                                ax=ax, 
+                                legend="brief"
+                            )
+
+                            # Tùy chỉnh tiêu đề và nhãn trục
+                            ax.set_title("Phân cụm DBSCAN (PCA 2D)")
+                            ax.set_xlabel("Thành phần chính 1")
+                            ax.set_ylabel("Thành phần chính 2")
+
+                            # Đếm số lượng điểm trong mỗi cụm
+                            cluster_counts = Counter(labels)
+                            total_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+
+                            # Tùy chỉnh legend
+                            max_display_clusters = 5
+                            top_clusters = sorted(
+                                [(cluster, count) for cluster, count in cluster_counts.items() if cluster != -1],
+                                key=lambda x: x[1],
+                                reverse=True
+                            )[:max_display_clusters]
+
+                            # Tạo nhãn mới cho legend
+                            new_labels = labels.copy()
+                            other_clusters = set(cluster_counts.keys()) - set([c[0] for c in top_clusters]) - {-1}
+                            for cluster in other_clusters:
+                                if cluster != -1:
+                                    new_labels[new_labels == cluster] = -2  # Gộp các cụm nhỏ vào "Others"
+
+                            # Cập nhật scatter plot với nhãn mới
+                            ax.clear()
+                            scatter = sns.scatterplot(
+                                x=X_processed[:, 0], 
+                                y=X_processed[:, 1], 
+                                hue=new_labels, 
+                                palette="deep", 
+                                ax=ax
+                            )
+
+                            # Tùy chỉnh lại tiêu đề và nhãn trục
+                            ax.set_title("Phân cụm DBSCAN (PCA 2D)")
+                            ax.set_xlabel("Thành phần chính 1")
+                            ax.set_ylabel("Thành phần chính 2")
+
+                            # Tùy chỉnh legend
+                            legend_labels = {label: f"Cụm {label}" for label in set(new_labels) if label != -1 and label != -2}
+                            legend_labels[-1] = "Nhiễu (-1)"
+                            legend_labels[-2] = f"Khác ({len(other_clusters)} cụm)"
+
+                            # Sắp xếp lại legend để "Nhiễu" lên đầu
+                            handles, labels = scatter.get_legend_handles_labels()
+                            labels_with_handles = [(legend_labels[int(label)] if label in legend_labels else f"Cụm {label}", handle) 
+                                                for label, handle in zip(labels, handles)]
+                            labels_with_handles.sort(key=lambda x: x[0].startswith("Nhiễu"), reverse=True)
+
+                            # Tạo legend mới
+                            new_handles = [item[1] for item in labels_with_handles]
+                            new_labels = [item[0] for item in labels_with_handles]
+                            scatter.legend(new_handles, new_labels, title=f"Tổng số cụm: {total_clusters}", 
+                                        loc="center left", bbox_to_anchor=(1, 0.5), fontsize=10)
+
+                            # Hiển thị biểu đồ
+                            st.pyplot(fig)
+                            
+                            # Ghi log các chỉ số vào MLflow
+                            mlflow.log_metric("num_clusters", num_clusters)
+                            mlflow.log_metric("noise_points", noise_points)
+                            for cluster, count in Counter(labels).items():
+                                if cluster != -1:
+                                    mlflow.log_metric(f"cluster_{cluster}_size", count)
+
+                            # Lưu mô hình
+                            mlflow.sklearn.log_model(dbscan, "dbscan_model")
+                            st.session_state.clustering_model = dbscan
+                            st.session_state.clustering_method = "DBSCAN"
+                            st.session_state.labels = labels
+
+                        # Gợi ý điều chỉnh tham số nếu nhiễu vẫn cao
+                        if noise_points / num_samples > 0.3:  # Nếu nhiễu chiếm hơn 30%
+                            st.warning(
+                                f"Cảnh báo: Tỷ lệ nhiễu cao ({round((noise_points / num_samples) * 100, 2)}%). "
+                                "Hãy thử tăng `eps` hoặc giảm `min_samples` để giảm nhiễu."
+                            )
+
+                    mlflow.end_run()
+
+        else:
+            st.info("📌 Vui lòng chọn số lượng mẫu và nhấn 'Lấy mẫu dữ liệu' để bắt đầu xử lý.")
     # with tab_mlflow:
     #     st.header("Thông tin Huấn luyện & MLflow UI")
     #     try:
