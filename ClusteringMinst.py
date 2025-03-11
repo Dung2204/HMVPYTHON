@@ -18,9 +18,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import DBSCAN as SklearnDBSCAN
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay,adjusted_rand_score
-
 from collections import Counter
 from mlflow.tracking import MlflowClient
+
 def run_ClusteringMinst_app():
     @st.cache_data  # Lưu cache để tránh load lại dữ liệu mỗi lần chạy lại Streamlit
     def get_sampled_pixels(images, sample_size=100_000):
@@ -898,96 +898,6 @@ def run_ClusteringMinst_app():
     
 
 
-    # with tab_mlflow:
-    #     st.header("Thông tin Huấn luyện & MLflow UI")
-    #     try:
-    #         client = MlflowClient()
-    #         experiment_name = "Clustering"
-
-    #         # Kiểm tra nếu experiment đã tồn tại
-    #         experiment = client.get_experiment_by_name(experiment_name)
-    #         if experiment is None:
-    #             experiment_id = client.create_experiment(experiment_name)
-    #             st.success(f"Experiment mới được tạo với ID: {experiment_id}")
-    #         else:
-    #             experiment_id = experiment.experiment_id
-    #             st.info(f"Đang sử dụng experiment ID: {experiment_id}")
-
-    #         mlflow.set_experiment(experiment_name)
-
-    #         # Truy vấn các run trong experiment
-    #         runs = client.search_runs(experiment_ids=[experiment_id])
-
-    #         # 1) Chọn và đổi tên Run Name
-    #         st.subheader("Đổi tên Run")
-    #         if runs:
-    #             run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
-    #                         for run in runs}
-    #             selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
-    #                                                     options=list(run_options.keys()), 
-    #                                                     format_func=lambda x: run_options[x])
-    #             new_run_name = st.text_input("Nhập tên mới cho Run:", 
-    #                                         value=run_options[selected_run_id_for_rename].split(" - ")[0])
-    #             if st.button("Cập nhật tên Run"):
-    #                 if new_run_name.strip():
-    #                     client.set_tag(selected_run_id_for_rename, "mlflow.runName", new_run_name.strip())
-    #                     st.success(f"Đã cập nhật tên Run thành: {new_run_name.strip()}")
-    #                 else:
-    #                     st.warning("Vui lòng nhập tên mới cho Run.")
-    #         else:
-    #             st.info("Chưa có Run nào được log.")
-
-    #         # 2) Xóa Run
-    #         st.subheader("Danh sách Run")
-    #         if runs:
-    #             selected_run_id_to_delete = st.selectbox("", 
-    #                                                     options=list(run_options.keys()), 
-    #                                                     format_func=lambda x: run_options[x])
-    #             if st.button("Xóa Run", key="delete_run"):
-    #                 client.delete_run(selected_run_id_to_delete)
-    #                 st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
-    #                 st.experimental_rerun()  # Tự động làm mới giao diện
-    #         else:
-    #             st.info("Chưa có Run nào để xóa.")
-
-    #         # 3) Danh sách các thí nghiệm
-    #         st.subheader("Danh sách các Run đã log")
-    #         if runs:
-    #             selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
-    #                                         options=list(run_options.keys()), 
-    #                                         format_func=lambda x: run_options[x])
-
-    #             # 4) Hiển thị thông tin chi tiết của Run được chọn
-    #             selected_run = client.get_run(selected_run_id)
-    #             st.write(f"**Run ID:** {selected_run_id}")
-    #             st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
-
-    #             st.markdown("### Tham số đã log")
-    #             st.json(selected_run.data.params)
-
-    #             st.markdown("### Chỉ số đã log")
-    #             metrics = {
-    #                 "Algorithm": selected_run.data.params.get("algorithm", "N/A"),
-    #                 "K (for K-means)": selected_run.data.params.get("k", "N/A"),
-    #                 "Max Iter (for K-means)": selected_run.data.params.get("max_iter", "N/A"),
-    #                 "EPS (for DBSCAN)": selected_run.data.params.get("eps", "N/A"),
-    #                 "Min Samples (for DBSCAN)": selected_run.data.params.get("min_samples", "N/A"),
-    #                 "Inertia (for K-means)": selected_run.data.metrics.get("inertia", "N/A"),
-    #                 "Num Clusters (for DBSCAN)": selected_run.data.metrics.get("num_clusters", "N/A"),
-    #                 "Noise Points (for DBSCAN)": selected_run.data.metrics.get("noise_points", "N/A")
-    #             }
-    #             st.json(metrics)
-
-    #             # 5) Nút bấm mở MLflow UI
-    #             st.subheader("Truy cập MLflow UI")
-    #             mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
-    #             if st.button("Mở MLflow UI"):
-    #                 st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
-    #         else:
-    #             st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
-
-    #     except Exception as e:
-    #         st.error(f"Không thể kết nối với MLflow: {e}")
     with tab_mlflow:
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
@@ -1040,7 +950,7 @@ def run_ClusteringMinst_app():
             else:
                 st.info("Chưa có Run nào để xóa.")
 
-            # 3) Danh sách các thí nghiệm và thông tin chi tiết
+            # 3) Danh sách các thí nghiệm
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
@@ -1095,6 +1005,113 @@ def run_ClusteringMinst_app():
 
         except Exception as e:
             st.error(f"Không thể kết nối với MLflow: {e}")
+    # with tab_mlflow:
+    #     st.header("Thông tin Huấn luyện & MLflow UI")
+    #     try:
+    #         client = MlflowClient()
+    #         experiment_name = "Clustering"
+
+    #         # Kiểm tra nếu experiment đã tồn tại
+    #         experiment = client.get_experiment_by_name(experiment_name)
+    #         if experiment is None:
+    #             experiment_id = client.create_experiment(experiment_name)
+    #             st.success(f"Experiment mới được tạo với ID: {experiment_id}")
+    #         else:
+    #             experiment_id = experiment.experiment_id
+    #             st.info(f"Đang sử dụng experiment ID: {experiment_id}")
+
+    #         mlflow.set_experiment(experiment_name)
+
+    #         # Truy vấn các run trong experiment
+    #         runs = client.search_runs(experiment_ids=[experiment_id])
+
+    #         # 1) Chọn và đổi tên Run Name
+    #         st.subheader("Đổi tên Run")
+    #         if runs:
+    #             run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
+    #                         for run in runs}
+    #             selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
+    #                                                     options=list(run_options.keys()), 
+    #                                                     format_func=lambda x: run_options[x])
+    #             new_run_name = st.text_input("Nhập tên mới cho Run:", 
+    #                                         value=run_options[selected_run_id_for_rename].split(" - ")[0])
+    #             if st.button("Cập nhật tên Run"):
+    #                 if new_run_name.strip():
+    #                     client.set_tag(selected_run_id_for_rename, "mlflow.runName", new_run_name.strip())
+    #                     st.success(f"Đã cập nhật tên Run thành: {new_run_name.strip()}")
+    #                 else:
+    #                     st.warning("Vui lòng nhập tên mới cho Run.")
+    #         else:
+    #             st.info("Chưa có Run nào được log.")
+
+    #         # 2) Xóa Run
+    #         st.subheader("Danh sách Run")
+    #         if runs:
+    #             selected_run_id_to_delete = st.selectbox("", 
+    #                                                     options=list(run_options.keys()), 
+    #                                                     format_func=lambda x: run_options[x])
+    #             if st.button("Xóa Run", key="delete_run"):
+    #                 client.delete_run(selected_run_id_to_delete)
+    #                 st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
+    #                 st.experimental_rerun()  # Tự động làm mới giao diện
+    #         else:
+    #             st.info("Chưa có Run nào để xóa.")
+
+    #         # 3) Danh sách các thí nghiệm và thông tin chi tiết
+    #         st.subheader("Danh sách các Run đã log")
+    #         if runs:
+    #             selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
+    #                                         options=list(run_options.keys()), 
+    #                                         format_func=lambda x: run_options[x])
+
+    #             # 4) Hiển thị thông tin chi tiết của Run được chọn
+    #             selected_run = client.get_run(selected_run_id)
+    #             st.write(f"**Run ID:** {selected_run_id}")
+    #             st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
+
+    #             # Hiển thị tham số đã log
+    #             st.markdown("### Tham số đã log")
+    #             params = {}
+    #             algorithm = selected_run.data.params.get("algorithm", "N/A")
+    #             params["Algorithm"] = algorithm
+
+    #             if algorithm == "K-means":
+    #                 params["K"] = selected_run.data.params.get("k", "N/A")
+    #                 params["Max Iterations"] = selected_run.data.params.get("max_iter", "N/A")
+    #             elif algorithm == "DBSCAN":
+    #                 params["EPS"] = selected_run.data.params.get("eps", "N/A")
+    #                 params["Min Samples"] = selected_run.data.params.get("min_samples", "N/A")
+    #                 params["Preprocess Noise"] = selected_run.data.params.get("preprocess_noise", "N/A")
+    #                 # params["Normalize Data"] = selected_run.data.params.get("normalize_data", "N/A")
+                
+    #             st.json(params)
+
+    #             # Hiển thị chỉ số đã log
+    #             st.markdown("### Chỉ số đã log")
+    #             metrics = {}
+    #             if algorithm == "K-means":
+    #                 metrics["Inertia"] = selected_run.data.metrics.get("inertia", "N/A")
+    #             elif algorithm == "DBSCAN":
+    #                 metrics["Number of Clusters"] = selected_run.data.metrics.get("num_clusters", "N/A")
+    #                 metrics["Noise Points"] = selected_run.data.metrics.get("noise_points", "N/A")
+    #                 # Thêm kích thước của từng cụm nếu có
+    #                 for key, value in selected_run.data.metrics.items():
+    #                     if key.startswith("cluster_") and key.endswith("_size"):
+    #                         cluster_id = key.split("_")[1]
+    #                         metrics[f"Cluster {cluster_id} Size"] = value
+                
+    #             st.json(metrics)
+
+    #             # 5) Nút bấm mở MLflow UI
+    #             st.subheader("Truy cập MLflow UI")
+    #             mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
+    #             if st.button("Mở MLflow UI"):
+    #                 st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
+    #         else:
+    #             st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
+
+    #     except Exception as e:
+    #         st.error(f"Không thể kết nối với MLflow: {e}")
 
 if __name__ == "__main__":
     run_ClusteringMinst_app()    
