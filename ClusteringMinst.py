@@ -19,7 +19,7 @@ from sklearn.cluster import DBSCAN as SklearnDBSCAN
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay,adjusted_rand_score
 from collections import Counter
-from mlflow.tracking import MlflowClient
+# from mlflow.tracking import MlflowClient
 
 def run_ClusteringMinst_app():
     @st.cache_data  # Lưu cache để tránh load lại dữ liệu mỗi lần chạy lại Streamlit
@@ -45,17 +45,17 @@ def run_ClusteringMinst_app():
             labels = np.fromfile(f, dtype=np.uint8)
         return labels
 
-    mlflow_tracking_uri = st.secrets["MLFLOW_TRACKING_URI"]
-    mlflow_username = st.secrets["MLFLOW_TRACKING_USERNAME"]
-    mlflow_password = st.secrets["MLFLOW_TRACKING_PASSWORD"]
+    # mlflow_tracking_uri = st.secrets["MLFLOW_TRACKING_URI"]
+    # mlflow_username = st.secrets["MLFLOW_TRACKING_USERNAME"]
+    # mlflow_password = st.secrets["MLFLOW_TRACKING_PASSWORD"]
     
-    # Thiết lập biến môi trường
-    os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
-    os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
-    os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
+    # # Thiết lập biến môi trường
+    # os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+    # os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
+    # os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
     
-    # Thiết lập MLflow (Đặt sau khi mlflow_tracking_uri đã có giá trị)
-    mlflow.set_tracking_uri(mlflow_tracking_uri)
+    # # Thiết lập MLflow (Đặt sau khi mlflow_tracking_uri đã có giá trị)
+    # mlflow.set_tracking_uri(mlflow_tracking_uri)
 
 
 
@@ -1005,6 +1005,7 @@ def run_ClusteringMinst_app():
 
     #     except Exception as e:
     #         st.error(f"Không thể kết nối với MLflow: {e}")
+    
     # with tab_mlflow:
     #     st.header("Thông tin Huấn luyện & MLflow UI")
     #     try:
