@@ -635,7 +635,16 @@ def run_ClusteringMinst_app():
         if "X_train" in st.session_state and "X_test" in st.session_state:
             X_train = st.session_state.X_train
             X_test = st.session_state.X_test
-
+        
+            # Kiểm tra X_train
+            st.write(f"Shape của X_train: {X_train.shape}")
+            if X_train.size == 0:
+                st.error("Lỗi: X_train rỗng!")
+                return
+            if np.any(np.isnan(X_train)):
+                st.error("Lỗi: X_train chứa giá trị NaN!")
+                return
+        
             # Chuẩn hóa dữ liệu
             scaler = StandardScaler()
             X_train_scaled = scaler.fit_transform(X_train)
