@@ -1,25 +1,21 @@
 import streamlit as st
 import os
-import cv2
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import random
 import struct
 from scipy.interpolate import UnivariateSpline
 import plotly.graph_objects as go
 from sklearn.decomposition import PCA
 import mlflow
+import time 
 from sklearn.metrics import silhouette_score, silhouette_samples, davies_bouldin_score
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import pairwise_distances
-from sklearn.svm import SVC
 from sklearn.manifold import TSNE
 import plotly.express as px
-from PIL import Image
-from collections import Counter
 from sklearn.datasets import make_classification
 from mlflow.tracking import MlflowClient
 
@@ -218,6 +214,166 @@ def run_PcaTSNEMinst_app():
                 st.write("3. **Phân tích giá trị riêng và vector riêng**: Tìm các thành phần chính từ ma trận hiệp phương sai.")
                 st.write("4. **Chọn thành phần chính**: Sắp xếp theo giá trị riêng giảm dần và giữ lại số lượng mong muốn.")
                 st.write("5. **Chiếu dữ liệu**: Chuyển dữ liệu sang không gian mới ít chiều hơn.")
+
+                st.markdown("---")
+                X, y = make_classification(
+                    n_features=6,
+                    n_classes=4,  # Giữ 4 lớp để phù hợp với 2**n_informative
+                    n_samples=1500,
+                    n_informative=2,
+                    random_state=42,
+                    n_clusters_per_class=1
+                )
+
+                # Áp dụng PCA để giảm chiều xuống 3D (hỗ trợ cả 2D và 3D)
+                pca = PCA(n_components=3)
+                X_pca = pca.fit_transform(X)
+
+                # Tiêu đề và thông tin
+                st.markdown("### Biểu đồ PCA với Đường Xu hướng")
+
+                # Cho phép người dùng chọn loại biểu đồ
+                chart_type = st.selectbox("Chọn loại biểu đồ:", ["2D", "3D"], key="chart_type_pca")
+
+                # Hiển thị thông tin về dữ liệu
+                st.markdown("**Thông tin dữ liệu:**")
+                st.write(f"- Số mẫu (n_samples): {X.shape[0]}")
+                st.write(f"- Số đặc trưng (n_features): {X.shape[1]}")
+                st.write(f"- Số lớp (n_classes): {len(np.unique(y))}")
+
+                # Hiển thị tỷ lệ phương sai
+                st.markdown("**Tỷ lệ phương sai được giải thích bởi các thành phần chính:**")
+                explained_variance_ratio = pca.explained_variance_ratio_
+                st.write(f"- Thành phần 1 (PC1): {explained_variance_ratio[0]:.4f}")
+                st.write(f"- Thành phần 2 (PC2): {explained_variance_ratio[1]:.4f}")
+                st.write(f"- Thành phần 3 (PC3): {explained_variance_ratio[2]:.4f}")
+                st.write(f"- Tổng phương sai được giữ lại: {sum(explained_variance_ratio):.4f}")
+
+                # Định nghĩa màu sắc cho từng lớp
+                color_map = {
+                    0: 'red',    # Lớp 0: Màu đỏ
+                    1: 'blue',   # Lớp 1: Màu xanh dương
+                    2: 'green',  # Lớp 2: Màu xanh lá
+                    3: 'purple'  # Lớp 3: Màu tím
+                }
+
+                # Tạo và hiển thị biểu đồ
+                if chart_type == "3D":
+                    # Biểu đồ 3D
+                    fig = go.Figure()
+
+                    # Thêm các điểm dữ liệu cho từng lớp
+                    for class_label in np.unique(y):
+                        indices = y == class_label
+                        fig.add_trace(
+                            go.Scatter3d(
+                                x=X_pca[indices, 0],
+                                y=X_pca[indices, 1],
+                                z=X_pca[indices, 2],
+                                mode='markers',
+                                marker=dict(size=5, opacity=0.6),
+                                name=f'Lớp {class_label}',  # Đặt tên cho từng lớp
+                                line=dict(color=color_map[class_label])
+                            )
+                        )
+
+                    # Sắp xếp dữ liệu theo PC1 để tạo đường xu hướng
+                    sort_indices = np.argsort(X_pca[:, 0])
+                    x_sorted = X_pca[sort_indices, 0]
+                    y_sorted = X_pca[sort_indices, 1]
+
+                    # Tạo đường xu hướng (dựa trên PC1 và PC2, z=0 cho đơn giản)
+                    x_smooth = np.linspace(x_sorted.min(), x_sorted.max(), 100)
+                    y_smooth = UnivariateSpline(x_sorted, y_sorted, k=3, s=0)(x_smooth)
+
+                    # Thêm đường xu hướng vào biểu đồ 3D
+                    fig.add_trace(
+                        go.Scatter3d(
+                            x=x_smooth,
+                            y=y_smooth,
+                            z=np.zeros_like(x_smooth),
+                            mode='lines',
+                            line=dict(color='black', width=2),
+                            name='Đường xu hướng tổng quát'
+                        )
+                    )
+
+                    # Cập nhật layout cho biểu đồ 3D
+                    fig.update_layout(
+                        title="Biểu đồ PCA 3D với Đường Xu hướng",
+                        scene=dict(
+                            xaxis_title='PC1',
+                            yaxis_title='PC2',
+                            zaxis_title='PC3'
+                        ),
+                        plot_bgcolor='white',
+                        paper_bgcolor='white',
+                        font_color='black',
+                        showlegend=True,
+                        legend_title_text='Chú thích'
+                    )
+
+                    st.markdown("### Biểu đồ 3D:")
+                    st.plotly_chart(fig, use_container_width=True)
+
+                else:
+                    # Biểu đồ 2D
+                    fig = go.Figure()
+
+                    # Thêm các điểm dữ liệu cho từng lớp
+                    for class_label in np.unique(y):
+                        indices = y == class_label
+                        fig.add_trace(
+                            go.Scatter(
+                                x=X_pca[indices, 0],
+                                y=X_pca[indices, 1],
+                                mode='markers',
+                                marker=dict(size=5, opacity=0.6),
+                                name=f'Lớp {class_label}',  # Đặt tên cho từng lớp
+                                line=dict(color=color_map[class_label])
+                            )
+                        )
+
+                    # Sắp xếp dữ liệu theo PC1 để tạo đường xu hướng
+                    sort_indices = np.argsort(X_pca[:, 0])
+                    x_sorted = X_pca[sort_indices, 0]
+                    y_sorted = X_pca[sort_indices, 1]
+
+                    # Tạo đường xu hướng
+                    x_smooth = np.linspace(x_sorted.min(), x_sorted.max(), 100)
+                    y_smooth = UnivariateSpline(x_sorted, y_sorted, k=3, s=0)(x_smooth)
+
+                    # Thêm đường xu hướng vào biểu đồ 2D
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x_smooth,
+                            y=y_smooth,
+                            mode='lines',
+                            line=dict(color='black', width=2),
+                            name='Đường xu hướng tổng quát'
+                        )
+                    )
+
+                    # Cập nhật layout cho biểu đồ 2D
+                    fig.update_layout(
+                        title="Biểu đồ PCA 2D với Đường Xu hướng",
+                        xaxis_title='PC1',
+                        yaxis_title='PC2',
+                        plot_bgcolor='white',
+                        paper_bgcolor='white',
+                        font_color='black',
+                        showlegend=True,
+                        legend_title_text='Chú thích'
+                    )
+
+                    st.markdown("### Biểu đồ 2D:")
+                    st.plotly_chart(fig, use_container_width=True)
+
+                # Hiển thị bảng màu sắc của các lớp
+                st.markdown("### Màu sắc của từng lớp:")
+                color_table = {f"Lớp {k}": v for k, v in color_map.items()}
+                st.table(color_table)
+
                 st.markdown("---")
                 
                 st.markdown("### Công thức toán học")
@@ -238,131 +394,8 @@ def run_PcaTSNEMinst_app():
                 - $$( n )$$: Số mẫu (số hàng trong ma trận $$( X_{std} ))$$.  
                 """)
                 st.markdown("---")
-                
 
-                X, y = make_classification(
-                    n_features=6,
-                    n_classes=3,
-                    n_samples=1500,
-                    n_informative=2,
-                    random_state=42,  # Thay đổi random_state để tạo phân bố phù hợp
-                    n_clusters_per_class=1
-                )
 
-                # Áp dụng PCA để giảm chiều xuống 2D (vì hình ảnh trông giống 2D)
-                pca = PCA(n_components=2)
-                X_pca = pca.fit_transform(X)
-
-                # Tiêu đề và đường phân cách
-                X, y = make_classification(
-                    n_features=6,
-                    n_classes=3,
-                    n_samples=1500,
-                    n_informative=2,
-                    random_state=42,  # Thay đổi random_state để tạo phân bố phù hợp
-                    n_clusters_per_class=1
-                )
-
-                # Áp dụng PCA để giảm chiều xuống 3D (hỗ trợ cả 2D và 3D)
-                pca = PCA(n_components=3)  # Giảm xuống 3 thành phần chính để hỗ trợ cả 2D và 3D
-                X_pca = pca.fit_transform(X)
-
-                # Tiêu đề và đường phân cách
-                # st.markdown("---")
-                st.markdown("### Biểu đồ PCA với Đường Xu hướng")
-
-                # Cho phép người dùng chọn loại biểu đồ (2D hoặc 3D)
-                chart_type = st.selectbox("Chọn loại biểu đồ:", ["2D", "3D"])
-
-                # Hiển thị thông tin về dữ liệu
-                st.markdown("**Thông tin dữ liệu:**")
-                st.write(f"- Số mẫu (n_samples): {X.shape[0]}")
-                st.write(f"- Số đặc trưng (n_features): {X.shape[1]}")
-                st.write(f"- Số lớp (n_classes): {len(np.unique(y))}")
-
-                # Hiển thị tỷ lệ phương sai được giải thích bởi PCA
-                st.markdown("**Tỷ lệ phương sai được giải thích bởi các thành phần chính:**")
-                explained_variance_ratio = pca.explained_variance_ratio_
-                st.write(f"- Thành phần 1 (PC1): {explained_variance_ratio[0]:.4f}")
-                st.write(f"- Thành phần 2 (PC2): {explained_variance_ratio[1]:.4f}")
-                st.write(f"- Thành phần 3 (PC3): {explained_variance_ratio[2]:.4f}")
-                st.write(f"- Tổng phương sai được giữ lại: {sum(explained_variance_ratio):.4f}")
-
-                # Tạo và hiển thị biểu đồ dựa trên lựa chọn của người dùng
-                if chart_type == "3D":
-                    # Biểu đồ 3D
-                    fig = px.scatter_3d(
-                        x=X_pca[:, 0],  # Thành phần chính 1 (PC1) cho trục x
-                        y=X_pca[:, 1],  # Thành phần chính 2 (PC2) cho trục y
-                        z=X_pca[:, 2],  # Thành phần chính 3 (PC3) cho trục z
-                        color=y,        # Màu sắc dựa trên nhãn lớp (y)
-                        opacity=0.6,    # Độ trong suốt để giống hình ảnh
-                        title="Biểu đồ PCA 3D với Đường Xu hướng"
-                    )
-
-                    # Sắp xếp dữ liệu theo PC1 (x) để đảm bảo tăng dần cho đường xu hướng (chỉ sử dụng 2D cho đường xu hướng)
-                    sort_indices = np.argsort(X_pca[:, 0])
-                    x_sorted = X_pca[sort_indices, 0]  # PC1 đã sắp xếp
-                    y_sorted = X_pca[sort_indices, 1]  # PC2 tương ứng với PC1 đã sắp xếp
-
-                    # Tạo đường xu hướng bằng UnivariateSpline với dữ liệu đã sắp xếp (chỉ sử dụng PC1 và PC2)
-                    x_smooth = np.linspace(x_sorted.min(), x_sorted.max(), 100)
-                    y_smooth = UnivariateSpline(x_sorted, y_sorted, k=3, s=0)(x_smooth)  # Đặt s=0 để tránh lỗi
-
-                    # Thêm đường cong xanh lá cây vào biểu đồ 3D (dự đoán z=0 cho đơn giản)
-                    fig.add_trace(
-                        go.Scatter3d(
-                            x=x_smooth,
-                            y=y_smooth,
-                            z=np.zeros_like(x_smooth),  # Giả định z=0 cho đường xu hướng trong 3D
-                            mode='lines',
-                            line=dict(color='green', width=2),
-                            name='Đường xu hướng'
-                        )
-                    )
-
-                    st.markdown("### Biểu đồ 3D:")
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    # Biểu đồ 2D
-                    fig = px.scatter(
-                        x=X_pca[:, 0],  # Thành phần chính 1 (PC1) cho trục x
-                        y=X_pca[:, 1],  # Thành phần chính 2 (PC2) cho trục y
-                        color=y,        # Màu sắc dựa trên nhãn lớp (y)
-                        opacity=0.6,    # Độ trong suốt để giống hình ảnh
-                        title="Biểu đồ PCA 2D với Đường Xu hướng"
-                    )
-
-                    # Sắp xếp dữ liệu theo PC1 (x) để đảm bảo tăng dần
-                    sort_indices = np.argsort(X_pca[:, 0])
-                    x_sorted = X_pca[sort_indices, 0]  # PC1 đã sắp xếp
-                    y_sorted = X_pca[sort_indices, 1]  # PC2 tương ứng với PC1 đã sắp xếp
-
-                    # Tạo đường xu hướng bằng UnivariateSpline với dữ liệu đã sắp xếp
-                    x_smooth = np.linspace(x_sorted.min(), x_sorted.max(), 100)
-                    y_smooth = UnivariateSpline(x_sorted, y_sorted, k=3, s=0)(x_smooth)  # Đặt s=0 để tránh lỗi
-
-                    # Thêm đường cong xanh lá cây vào biểu đồ 2D
-                    fig.add_trace(
-                        go.Scatter(
-                            x=x_smooth,
-                            y=y_smooth,
-                            mode='lines',
-                            line=dict(color='green', width=2),
-                            name='Đường xu hướng'
-                        )
-                    )
-
-                    st.markdown("### Biểu đồ 2D:")
-                    st.plotly_chart(fig, use_container_width=True)
-
-                # Cập nhật layout cho cả 2D và 3D (nền trắng, font đen)
-                fig.update_layout(
-                    plot_bgcolor='white',
-                    paper_bgcolor='white',
-                    font_color='black',
-                    showlegend=True
-                )
 
                 st.markdown("---")
                 st.markdown("### Ưu điểm & Nhược điểm của PCA")
@@ -395,6 +428,115 @@ def run_PcaTSNEMinst_app():
                 st.write("2. **Tính độ tương đồng trong không gian thấp chiều**: Dùng phân phối t-Student để mô phỏng.")
                 st.write("3. **Tối ưu hóa hàm mất mát**: Dùng Gradient Descent để giảm KL Divergence.")
                 st.write("4. **Trực quan hóa**: Đưa dữ liệu về không gian 2D/3D.")
+
+                X, y = make_classification(
+                    n_features=6,
+                    n_classes=3,
+                    n_samples=1500,
+                    n_informative=2,
+                    random_state=5,
+                    n_clusters_per_class=1
+                )
+
+                # Tiêu đề và đường phân cách
+                st.markdown("---")
+                st.markdown("### Biểu đồ Dữ liệu Phân loại với t-SNE & Plotly")
+
+                # Cho phép người dùng chọn loại biểu đồ (2D hoặc 3D)
+                chart_type = st.selectbox("Chọn loại biểu đồ:", ["2D", "3D"])
+
+                # Áp dụng t-SNE để giảm chiều dữ liệu
+                n_components = 3 if chart_type == "3D" else 2
+                X_embedded = TSNE(n_components=n_components, random_state=42).fit_transform(X)
+
+                # Hiển thị thông tin về dữ liệu
+                st.markdown("### Thông tin dữ liệu:")
+                st.write(f"- Số mẫu (n_samples): {X.shape[0]}")
+                st.write(f"- Số đặc trưng (n_features): {X.shape[1]}")
+                st.write(f"- Số lớp (n_classes): {len(np.unique(y))}")
+
+                # Định nghĩa màu sắc cho từng lớp
+                color_map = {
+                    0: 'red',    # Lớp 0: Màu đỏ
+                    1: 'blue',   # Lớp 1: Màu xanh dương
+                    2: 'green'   # Lớp 2: Màu xanh lá
+                }
+
+                # Tạo và hiển thị biểu đồ dựa trên lựa chọn của người dùng
+                if chart_type == "3D":
+                    # Biểu đồ 3D
+                    fig = go.Figure()
+
+                    # Thêm các điểm dữ liệu cho từng lớp
+                    for class_label in np.unique(y):
+                        indices = y == class_label
+                        fig.add_trace(
+                            go.Scatter3d(
+                                x=X_embedded[indices, 0],
+                                y=X_embedded[indices, 1],
+                                z=X_embedded[indices, 2],
+                                mode='markers',
+                                marker=dict(size=5, opacity=0.8, color=color_map[class_label]),
+                                name=f'Lớp {class_label}'  # Đặt tên cho từng lớp
+                            )
+                        )
+
+                    # Cập nhật layout cho biểu đồ 3D
+                    fig.update_layout(
+                        title="Biểu đồ Dữ liệu Phân loại 3D (t-SNE)",
+                        scene=dict(
+                            xaxis_title='t-SNE Dim 1',
+                            yaxis_title='t-SNE Dim 2',
+                            zaxis_title='t-SNE Dim 3'
+                        ),
+                        plot_bgcolor='white',
+                        paper_bgcolor='white',
+                        font_color='black',
+                        showlegend=True,
+                        legend_title_text='Chú thích'
+                    )
+
+                    st.markdown("### Biểu đồ 3D:")
+                    st.plotly_chart(fig, use_container_width=True)
+
+                else:
+                    # Biểu đồ 2D
+                    fig = go.Figure()
+
+                    # Thêm các điểm dữ liệu cho từng lớp
+                    for class_label in np.unique(y):
+                        indices = y == class_label
+                        fig.add_trace(
+                            go.Scatter(
+                                x=X_embedded[indices, 0],
+                                y=X_embedded[indices, 1],
+                                mode='markers',
+                                marker=dict(size=5, opacity=0.8, color=color_map[class_label]),
+                                name=f'Lớp {class_label}'  # Đặt tên cho từng lớp
+                            )
+                        )
+
+                    # Cập nhật layout cho biểu đồ 2D
+                    fig.update_layout(
+                        title="Biểu đồ Dữ liệu Phân loại 2D (t-SNE)",
+                        xaxis_title='t-SNE Dim 1',
+                        yaxis_title='t-SNE Dim 2',
+                        plot_bgcolor='white',
+                        paper_bgcolor='white',
+                        font_color='black',
+                        showlegend=True,
+                        legend_title_text='Chú thích'
+                    )
+
+                    st.markdown("### Biểu đồ 2D:")
+                    st.plotly_chart(fig, use_container_width=True)
+
+                # Hiển thị bảng màu sắc của các lớp
+                st.markdown("### Màu sắc của từng lớp:")
+                color_table = {f"Lớp {k}": v for k, v in color_map.items()}
+                st.table(color_table)
+
+
                 st.markdown("---")
                 st.markdown("### Công thức toán học")
                 st.markdown("**Công thức xác suất có điều kiện trong t-SNE (Conditional Probability Formula for t-SNE):**")
@@ -429,51 +571,7 @@ def run_PcaTSNEMinst_app():
                     - Hàm chi phí này sử dụng Kullback-Leibler (KL) divergence để tối ưu hóa, nhằm làm cho phân phối trong không gian nhúng thấp khớp với phân phối $$( p_{ij} )$$ trong không gian gốc càng gần càng tốt. Đây là một phần cốt lõi của t-SNE.
                 """)
 
-                X, y = make_classification(
-                    n_features=6,
-                    n_classes=3,
-                    n_samples=1500,
-                    n_informative=2,
-                    random_state=5,
-                    n_clusters_per_class=1
-                )
-
-                # Tiêu đề và đường phân cách
-                st.markdown("---")
-                st.markdown("### Biểu đồ Dữ liệu Phân loại với Plotly")
-
-                # Cho phép người dùng chọn loại biểu đồ (2D hoặc 3D)
-                chart_type = st.selectbox("Chọn loại biểu đồ:", ["2D", "3D"])
-
-                # Hiển thị thông tin về dữ liệu
-                st.markdown("### Thông tin dữ liệu:")
-                st.write(f"- Số mẫu (n_samples): {X.shape[0]}")
-                st.write(f"- Số đặc trưng (n_features): {X.shape[1]}")
-                st.write(f"- Số lớp (n_classes): {len(np.unique(y))}")
-
-                # Tạo và hiển thị biểu đồ dựa trên lựa chọn của người dùng
-                if chart_type == "3D":
-                    # Biểu đồ 3D
-                    fig = px.scatter_3d(
-                        x=X[:, 0],  # Sử dụng cột đầu tiên của X cho trục x
-                        y=X[:, 1],  # Sử dụng cột thứ hai của X cho trục y
-                        z=X[:, 2],  # Sử dụng cột thứ ba của X cho trục z
-                        color=y,    # Màu sắc dựa trên nhãn lớp (y)
-                        opacity=0.8 # Độ trong suốt
-                    )
-                    st.markdown("### Biểu đồ 3D:")
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    # Biểu đồ 2D (sử dụng 2 đặc trưng đầu tiên)
-                    fig = px.scatter(
-                        x=X[:, 0],  # Sử dụng cột đầu tiên của X cho trục x
-                        y=X[:, 1],  # Sử dụng cột thứ hai của X cho trục y
-                        color=y,    # Màu sắc dựa trên nhãn lớp (y)
-                        opacity=0.8 # Độ trong suốt
-                    )
-                    st.markdown("### Biểu đồ 2D:")
-                    st.plotly_chart(fig, use_container_width=True)
-
+                
 
                 st.markdown("---")
                 st.markdown("### Ưu điểm & Nhược điểm của T-SNE")
@@ -502,7 +600,6 @@ def run_PcaTSNEMinst_app():
                 st.error("⚠️ Dữ liệu huấn luyện hoặc kiểm tra chưa được tải. Vui lòng kiểm tra lại.")
                 return
             else:
-                # Lưu dữ liệu vào session_state (nếu chưa có) và lấy dữ liệu mà không in ra
                 if "X_train_shape" not in st.session_state:
                     st.session_state.X_train_shape = st.session_state.X_train.shape
                 if "X_test_shape" not in st.session_state:
@@ -520,19 +617,17 @@ def run_PcaTSNEMinst_app():
 
                 st.session_state.X_train_scaled = X_train_scaled
                 st.session_state.X_test_scaled = X_test_scaled
-
-                # st.success("✅ Dữ liệu đã được chuẩn hóa thành công.")
             except Exception as e:
                 st.error(f"⚠️ Lỗi khi chuẩn hóa dữ liệu: {e}")
                 return
 
-            # Chọn số lượng mẫu để giảm chiều (chỉ từ tập huấn luyện)
+            # Chọn số lượng mẫu để giảm chiều
             n_samples = st.slider("**Số lượng mẫu để giảm chiều:**", 
                                 min_value=100, 
                                 max_value=X_train_scaled.shape[0], 
                                 value=X_train_scaled.shape[0], 
                                 step=100)
-            X_train_subset = X_train_scaled[:n_samples, :]  # Lấy một tập con của dữ liệu huấn luyện
+            X_train_subset = X_train_scaled[:n_samples, :]
 
             # Chọn phương pháp giảm chiều
             dim_reduction_method = st.selectbox("**Chọn phương pháp thu gọn chiều:**", ["PCA", "t-SNE"])
@@ -540,41 +635,49 @@ def run_PcaTSNEMinst_app():
             if dim_reduction_method == "PCA":
                 # Tham số của PCA
                 n_components = st.slider("**Số chiều:**", 
-                                      min_value=2, 
-                                      max_value=min(X_train_subset.shape[1], 20), 
-                                      value=5)
+                                        min_value=2, 
+                                        max_value=min(X_train_subset.shape[1], 20), 
+                                        value=5)
             
-
-                # Chọn loại biểu đồ (2D hoặc 3D)
                 chart_type = st.selectbox("**Chọn loại biểu đồ:**", ["2D", "3D"])
 
                 if st.button("🚀 Chạy PCA"):
                     with st.spinner("Đang huấn luyện mô hình..."):
                         with mlflow.start_run():
                             try:
-                                # Áp dụng PCA
-                                pca = PCA(n_components=n_components if chart_type == "3D" else 2,  
-                                        random_state=42)
-                                X_train_pca = pca.fit_transform(X_train_subset)
+                                # Khởi tạo thanh tiến trình
+                                progress_bar = st.progress(0)
+                                progress_text = st.empty()
 
-                                # Log tham số vào MLflow
-                                mlflow.log_param("algorithm", "PCA")
-                                mlflow.log_param("n_components", n_components if chart_type == "3D" else 2)
+                                # Áp dụng PCA với thanh tiến trình đơn giản (dựa trên thời gian)
+                                start_time = time.time()
+                                pca = PCA(n_components=n_components if chart_type == "3D" else 2, random_state=42)
+                                X_train_pca = pca.fit_transform(X_train_subset)
+                                end_time = time.time()
+
+                                # Ước lượng tiến trình dựa trên thời gian (giả lập)
+                                duration = end_time - start_time
+                                for i in range(100):
+                                    time.sleep(duration / 100)  # Giả lập tiến trình
+                                    progress_bar.progress(i + 1)
+                                    progress_text.text(f"Đang chạy PCA... {i + 1}%")
+
                                 st.session_state.X_train_pca = X_train_pca
                                 st.session_state.explained_variance_ratio_ = pca.explained_variance_ratio_
+                                mlflow.log_param("algorithm", "PCA")
+                                mlflow.log_param("n_components", n_components if chart_type == "3D" else 2)
                                 mlflow.log_param("X_train_pca", X_train_pca.tolist() if X_train_pca.size > 0 else "Empty")
 
-                                # Log phương sai giải thích
                                 explained_variance = np.sum(pca.explained_variance_ratio_)
                                 mlflow.log_metric("explained_variance", explained_variance)
 
-                                # Tạo và hiển thị biểu đồ với Plotly (2D hoặc 3D)
+                                # Tạo và hiển thị biểu đồ
                                 if chart_type == "3D":
                                     fig = px.scatter_3d(
                                         x=X_train_pca[:, 0], 
                                         y=X_train_pca[:, 1], 
                                         z=X_train_pca[:, 2] if n_components >= 3 else np.zeros_like(X_train_pca[:, 0]),
-                                        color=st.session_state.y_train[:n_samples],  # Sử dụng nhãn huấn luyện làm màu
+                                        color=st.session_state.y_train[:n_samples],
                                         opacity=0.6,
                                         title=f"PCA 3D với {n_components} thành phần chính"
                                     )
@@ -582,12 +685,11 @@ def run_PcaTSNEMinst_app():
                                     fig = px.scatter(
                                         x=X_train_pca[:, 0], 
                                         y=X_train_pca[:, 1],
-                                        color=st.session_state.y_train[:n_samples],  # Sử dụng nhãn huấn luyện làm màu
+                                        color=st.session_state.y_train[:n_samples],
                                         opacity=0.6,
                                         title="PCA 2D với 2 thành phần chính"
                                     )
 
-                                # Hiển thị biểu đồ trong Streamlit
                                 st.plotly_chart(fig, use_container_width=True)
 
                                 st.markdown(
@@ -597,26 +699,34 @@ def run_PcaTSNEMinst_app():
                                     - **PCA** giúp giảm chiều dữ liệu trong khi vẫn giữ lại thông tin quan trọng. 
                                     """
                                 )
+                                progress_text.text("Hoàn tất PCA! 100%")
                             except Exception as e:
                                 st.error(f"⚠️ Lỗi khi chạy PCA: {e}")
-                        mlflow.end_run()
+                            mlflow.end_run()
 
             elif dim_reduction_method == "t-SNE":
-                # Tham số của t-SNE
                 n_components = st.selectbox("**Số chiều đầu ra:**", [2, 3])
-                perplexity = st.slider("**Perplexity:**", min_value=5, max_value=50, value=30)
-                learning_rate = st.slider("**Learning rate:**", min_value=10, max_value=1000, value=200)
                 n_iter = st.slider("**Số vòng lặp tối đa:**", min_value=250, max_value=5000, value=1000, step=250)
-                
 
                 if st.button("🚀 Chạy t-SNE"):
                     with st.spinner("Đang huấn luyện mô hình..."):
                         with mlflow.start_run():
                             try:
-                                # Áp dụng t-SNE
-                                tsne = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=learning_rate, 
-                                            n_iter=n_iter, random_state=42)
+                                # Khởi tạo thanh tiến trình
+                                progress_bar = st.progress(0)
+                                progress_text = st.empty()
+
+                                # Áp dụng t-SNE với theo dõi tiến trình dựa trên n_iter
+                                tsne = TSNE(n_components=n_components, n_iter=n_iter, random_state=42)
                                 X_train_tsne = tsne.fit_transform(X_train_subset)
+
+                                # Cập nhật tiến trình (giả lập dựa trên n_iter)
+                                for i in range(n_iter):
+                                    if i % (n_iter // 100) == 0:  # Cập nhật mỗi 1% tiến trình
+                                        progress = int((i / n_iter) * 100)
+                                        progress_bar.progress(progress)
+                                        progress_text.text(f"Đang chạy t-SNE... {progress}%")
+
                                 st.session_state.X_train_tsne = X_train_tsne
                                 try:
                                     st.session_state.kl_divergence = tsne.kl_divergence_
@@ -624,29 +734,23 @@ def run_PcaTSNEMinst_app():
                                     st.session_state.kl_divergence = "Không có thông tin"
                                 mlflow.log_param("algorithm", "t-SNE")
                                 mlflow.log_param("n_components", n_components)
-                                mlflow.log_param("perplexity", perplexity)
-                                mlflow.log_param("learning_rate", learning_rate)
                                 mlflow.log_param("n_iter", n_iter)
-                                
                                 mlflow.log_param("X_train_tsne", X_train_tsne.tolist() if X_train_tsne.size > 0 else "Empty")
 
-                                # Tạo và hiển thị biểu đồ với Plotly (2D hoặc 3D)
+                                # Tạo và hiển thị biểu đồ
                                 if n_components == 3:
                                     fig = px.scatter_3d(
                                         x=X_train_tsne[:, 0], y=X_train_tsne[:, 1], z=X_train_tsne[:, 2],
-                                        color=st.session_state.y_train[:n_samples],  # Sử dụng nhãn huấn luyện làm màu
+                                        color=st.session_state.y_train[:n_samples],
                                         opacity=0.6,
-                                        title=f"t-SNE 3D với Perplexity={perplexity}"
                                     )
                                 else:
                                     fig = px.scatter(
                                         x=X_train_tsne[:, 0], y=X_train_tsne[:, 1],
-                                        color=st.session_state.y_train[:n_samples],  # Sử dụng nhãn huấn luyện làm màu
+                                        color=st.session_state.y_train[:n_samples],
                                         opacity=0.6,
-                                        title=f"t-SNE 2D với Perplexity={perplexity}"
                                     )
 
-                                # Hiển thị biểu đồ trong Streamlit
                                 st.plotly_chart(fig, use_container_width=True)
 
                                 st.markdown(
@@ -656,16 +760,17 @@ def run_PcaTSNEMinst_app():
                                     - **t-SNE** giúp giữ lại cấu trúc cục bộ của dữ liệu, thích hợp cho dữ liệu phi tuyến tính.
                                     """
                                 )
+                                progress_text.text("Hoàn tất t-SNE! 100%")
                             except Exception as e:
                                 st.error(f"⚠️ Lỗi khi chạy t-SNE: {e}")
-                        mlflow.end_run()
-                            
+                            mlflow.end_run()
+                                
     with tab_mlflow:
         st.header("Thông tin Huấn luyện & MLflow UI")
-        try:  
+        try:
             client = MlflowClient()
             experiment_name = "PCA_TSNE"
-    
+
             # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
             if experiment is None:
@@ -674,22 +779,22 @@ def run_PcaTSNEMinst_app():
             else:
                 experiment_id = experiment.experiment_id
                 st.info(f"Đang sử dụng experiment ID: {experiment_id}")
-    
+
             mlflow.set_experiment(experiment_name)
-    
+
             # Truy vấn các run trong experiment
             runs = client.search_runs(experiment_ids=[experiment_id])
-    
+
             # 1) Chọn và đổi tên Run Name
             st.subheader("Đổi tên Run")
             if runs:
                 run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
-                               for run in runs}
+                            for run in runs}
                 selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
-                                                          options=list(run_options.keys()), 
-                                                          format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 new_run_name = st.text_input("Nhập tên mới cho Run:", 
-                                             value=run_options[selected_run_id_for_rename].split(" - ")[0])
+                                            value=run_options[selected_run_id_for_rename].split(" - ")[0])
                 if st.button("Cập nhật tên Run"):
                     if new_run_name.strip():
                         client.set_tag(selected_run_id_for_rename, "mlflow.runName", new_run_name.strip())
@@ -698,44 +803,46 @@ def run_PcaTSNEMinst_app():
                         st.warning("Vui lòng nhập tên mới cho Run.")
             else:
                 st.info("Chưa có Run nào được log.")
-    
+
             # 2) Xóa Run
             st.subheader("Danh sách Run")
             if runs:
                 selected_run_id_to_delete = st.selectbox("", 
-                                                         options=list(run_options.keys()), 
-                                                         format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 if st.button("Xóa Run", key="delete_run"):
                     client.delete_run(selected_run_id_to_delete)
                     st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
-                    st.experimental_rerun()  # Tự động làm mới giao diện
+                    st.experimental_rerun()
             else:
                 st.info("Chưa có Run nào để xóa.")
-    
+
             # 3) Danh sách các thí nghiệm
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
-                                               options=list(run_options.keys()), 
-                                               format_func=lambda x: run_options[x])
-    
+                                            options=list(run_options.keys()), 
+                                            format_func=lambda x: run_options[x])
+
                 # 4) Hiển thị thông tin chi tiết của Run được chọn
                 selected_run = client.get_run(selected_run_id)
                 st.write(f"**Run ID:** {selected_run_id}")
                 st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
-    
+
                 st.markdown("### Tham số đã log")
                 st.json(selected_run.data.params)
-    
+
                 st.markdown("### Chỉ số đã log")
                 metrics = {
-                    "n_components": selected_run.data.metrics.get("n_components", "N/A"),
-                    "perplexity": selected_run.data.metrics.get("perplexity", "N/A"),
-                    "learning_rate": selected_run.data.metrics.get("learning_rate", "N/A"),
-                    "n_iter": selected_run.data.metrics.get("n_iter", "N/A")
+                    "explained_variance": selected_run.data.metrics.get("explained_variance", "N/A"),
+                    "kl_divergence": selected_run.data.metrics.get("kl_divergence", "N/A"),
+                    "n_components": selected_run.data.params.get("n_components", "N/A"),
+                    "n_iter": selected_run.data.params.get("n_iter", "N/A"),
+                    "n_samples": selected_run.data.params.get("n_samples", "N/A"),
+                    "chart_type": selected_run.data.params.get("chart_type", "N/A")
                 }
                 st.json(metrics)
-    
+
                 # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
                 mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
@@ -743,9 +850,9 @@ def run_PcaTSNEMinst_app():
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
                 st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
-    
+
         except Exception as e:
-            st.error(f"Không thể kết nối với MLflow: {e}")    
+            st.error(f"Không thể kết nối với MLflow: {e}")
 
 if __name__ == "__main__":
     run_PcaTSNEMinst_app()  
