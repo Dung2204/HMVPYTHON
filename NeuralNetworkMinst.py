@@ -348,8 +348,6 @@ def run_NeuralNetwork_app():
                             mlflow.log_param("input_shape", input_shape)
                             mlflow.log_metric("train_accuracy", history.history['accuracy'][-1])
                             mlflow.log_metric("val_accuracy", history.history['val_accuracy'][-1])
-                            mlflow.log_metric("test_accuracy", test_accuracy)
-                            mlflow.log_metric("test_loss", test_loss)
                             mlflow.log_metric("final_train_loss", history.history['loss'][-1])
                             mlflow.log_metric("final_val_loss", history.history['val_loss'][-1])
 
