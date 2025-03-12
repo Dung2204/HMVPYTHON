@@ -10,3 +10,4 @@ altair
 mlflow
 streamlit-drawable-canvas
 plotly
+networkx
