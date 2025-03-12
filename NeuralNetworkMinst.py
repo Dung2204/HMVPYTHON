@@ -97,11 +97,11 @@ def run_NeuralNetwork_app():
     st.session_state.y_test = y_test
 
     # Giao diện Streamlit
-    st.title("📸 MNIST PCA_T-SNE")
+    st.title("📸 MNIST Neural NetWork")
     tabs = st.tabs([
             "Thông tin",
             "Tập dữ liệu",
-            "Chọn mẫu",
+            " Phân chia tỉ lệ",
             "Huấn luyện mô hình",
             "Dự đoán",
             "Thông tin & Mlflow",
