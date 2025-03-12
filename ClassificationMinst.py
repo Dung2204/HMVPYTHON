@@ -3,22 +3,23 @@ import os
 import cv2
 import numpy as np
 import pandas as pd
-import pickle
-import seaborn as sns
 import random
 import struct
+from sklearn.datasets import make_circles
 from sklearn.datasets import load_iris
 import mlflow
 import matplotlib.pyplot as plt
 from streamlit_drawable_canvas import st_canvas
 from sklearn.model_selection import train_test_split
-from sklearn import datasets
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier,plot_tree
+from sklearn.datasets import make_classification
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, ConfusionMatrixDisplay
 from PIL import Image
 from sklearn.model_selection import KFold
+import matplotlib.patches as mpatches
+import time
 from collections import Counter
 from mlflow.tracking import MlflowClient
 
@@ -185,6 +186,86 @@ def run_ClassificationMinst_app():
                 - Quá trình này lặp lại cho đến khi dữ liệu được phân chia hoàn toàn hoặc đạt đến điều kiện dừng (ví dụ: độ sâu tối đa). 
                 - Thuật toán thường sử dụng các tiêu chí như độ thuần nhất để chọn đặc trưng tốt nhất cho mỗi lần phân chia.
                 """)
+
+                st.markdown("---")
+                st.subheader("**Decision Tree minh họa mô hình phân loại dữ liệu hoa Iris**")
+                iris = load_iris()
+                X, y = iris.data, iris.target
+                feature_names = iris.feature_names
+                target_names = iris.target_names
+
+                # Chia dữ liệu thành tập huấn luyện và kiểm tra
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+                # Thanh trượt để chọn độ sâu tối đa
+                st.markdown("**Tùy chỉnh độ sâu tối đa của cây**")
+                max_depth = st.slider("Chọn độ sâu tối đa (max_depth):", 1, 5, 3)
+
+                # Huấn luyện Cây Quyết định
+                clf = DecisionTreeClassifier(max_depth=max_depth, random_state=42, criterion='gini')
+                clf.fit(X_train, y_train)
+
+                # Độ chính xác
+                y_pred = clf.predict(X_test)
+                accuracy = clf.score(X_test, y_test)
+                st.write(f"Độ chính xác trên tập kiểm tra: {accuracy:.2f}")
+
+                # Biểu đồ 1: Cây quyết định
+                st.markdown("#### **Biểu đồ Cây Quyết định minh họa mô hình phân loại dữ liệu hoa Iris**")
+                fig1, ax1 = plt.subplots(figsize=(12, 8))
+                plot_tree(clf, feature_names=feature_names, class_names=target_names, filled=True, rounded=True, ax=ax1)
+                plt.title("Cây Quyết định với độ sâu tối đa = {}".format(max_depth))
+                st.pyplot(fig1)
+
+                # Biểu đồ 2: Phân chia dữ liệu tại mỗi bước
+                st.subheader("**Minh họa quá trình phân chia dữ liệu**")
+                # Chọn hai đặc trưng để trực quan hóa (Petal Length và Petal Width)
+                X_subset = X_train[:, [2, 3]]  # Petal Length và Petal Width
+                feature_subset_names = feature_names[2:4]
+
+                # Huấn luyện lại cây quyết định trên 2 đặc trưng để trực quan hóa
+                clf_subset = DecisionTreeClassifier(max_depth=max_depth, random_state=42, criterion='gini')
+                clf_subset.fit(X_subset, y_train)
+
+                # Tạo lưới điểm để vẽ ranh giới quyết định
+                x_min, x_max = X_subset[:, 0].min() - 1, X_subset[:, 0].max() + 1
+                y_min, y_max = X_subset[:, 1].min() - 1, X_subset[:, 1].max() + 1
+                xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.1), np.arange(y_min, y_max, 0.1))
+                Z = clf_subset.predict(np.c_[xx.ravel(), yy.ravel()])
+                Z = Z.reshape(xx.shape)
+
+                # Vẽ ranh giới quyết định và dữ liệu
+                fig2, ax2 = plt.subplots(figsize=(8, 6))
+                ax2.contourf(xx, yy, Z, alpha=0.4, cmap=plt.cm.RdYlBu)
+
+                # Vẽ các điểm dữ liệu với màu sắc tương ứng
+                scatter = ax2.scatter(X_subset[:, 0], X_subset[:, 1], c=y_train, cmap=plt.cm.RdYlBu, edgecolor='k')
+
+                # Sử dụng mpatches để tạo chú thích mà không cần scatter rỗng
+                colors = plt.cm.RdYlBu([0, 0.5, 1])  # Lấy màu từ cmap
+                legend_elements = [
+                    mpatches.Patch(color=colors[0], label='0: Setosa'),
+                    mpatches.Patch(color=colors[1], label='1: Versicolor'),
+                    mpatches.Patch(color=colors[2], label='2: Virginica')
+                ]
+                ax2.legend(handles=legend_elements, title="Nhãn", loc="best")
+
+                ax2.set_xlabel(feature_subset_names[0])
+                ax2.set_ylabel(feature_subset_names[1])
+                ax2.set_title("Phân chia dữ liệu theo Cây Quyết định")
+                st.pyplot(fig2)
+
+                # Giải thích chi tiết
+                st.subheader("Giải thích chi tiết")
+                st.write("""
+                - **Nút gốc (Root)**: Cây bắt đầu bằng cách chọn một đặc trưng (ví dụ: Petal Length) để phân chia dữ liệu. Điều kiện phân chia được hiển thị trong biểu đồ cây (ví dụ: Petal Length <= 2.45).
+                - **Nhánh con**: Sau mỗi lần phân chia, dữ liệu được chia thành các tập con (True/False). Quá trình lặp lại cho đến khi đạt độ thuần nhất (Gini = 0) hoặc độ sâu tối đa.
+                - **Tiêu chí Gini**: Độ thuần nhất (Gini impurity) được sử dụng để chọn đặc trưng tốt nhất tại mỗi bước. Giá trị Gini càng thấp, tập dữ liệu càng thuần nhất.
+                - **Biểu đồ phân chia**: Hiển thị ranh giới quyết định trên không gian 2D (Petal Length và Petal Width), cho thấy cách cây phân chia dữ liệu thành các vùng. Nhãn được hiển thị rõ ràng với giá trị (0: Setosa, 1: Versicolor, 2: Virginica).
+                """)
+
+
+
                 st.markdown("---")
                 st.markdown("""
                 ### Công thức toán học:  
@@ -206,6 +287,7 @@ def run_ClassificationMinst_app():
                 - $$(A)$$: Đặc trưng được chọn để phân chia.  
                 - $$(S_v)$$: Tập con của \(S\) với giá trị \(v\) của đặc trưng \(A\).  
                 """)
+            
                 st.markdown("---")
                 st.markdown("""
                 ### Hoạt động trên MNIST:  
@@ -217,37 +299,7 @@ def run_ClassificationMinst_app():
                     - Pixel dọc hai bên có sáng không?
                 - Dựa trên câu trả lời, mô hình sẽ tiếp tục chia nhỏ tập dữ liệu.
                 """)
-                st.markdown("""
-                ### Áp dụng vào ngữ cảnh Decision Tree với MNIST:
-                - **Entropy** giúp **Decision Tree** đánh giá mức độ hỗn loạn của dữ liệu **MNIST** (ví dụ: tập hợp các ảnh chữ số 0-9 có tỷ lệ phân bố như thế nào).
-                - **Information Gain** được dùng để chọn các pixel (đặc trưng) quan trọng nhất (ví dụ: pixel sáng/tối ở vị trí nào) để phân chia dữ liệu, từ đó xây dựng cây phân loại các chữ số hiệu quả.
-                """)
                 
-                st.markdown("---")
-                st.markdown("### Ví dụ về Decision TreeTree: minh họa mô hình phân loại dữ liệu hoa Iris")
-                # Tải bộ dữ liệu Iris từ sklearn
-                iris = load_iris()
-                X, y = iris.data, iris.target
-
-                # Huấn luyện mô hình cây quyết định
-                clf = DecisionTreeClassifier(max_depth=3, random_state=42)
-                clf.fit(X, y)
-
-                # Vẽ biểu đồ cây quyết định
-                fig, ax = plt.subplots(figsize=(12, 8))
-                plot_tree(clf, feature_names=iris.feature_names, class_names=iris.target_names, filled=True, ax=ax)
-
-                # Hiển thị biểu đồ trên Streamlit
-                st.pyplot(fig)
-                st.markdown("""
-                📝 Giải thích về cây quyết định ví dụ trên:
-                - **Các nút (Nodes)**: Mỗi hình chữ nhật là một nút quyết định dựa trên một đặc trưng của dữ liệu.
-                - **Nhánh (Branches)**: Các đường nối thể hiện kết quả của điều kiện kiểm tra.
-                - **Samples**: Số lượng mẫu tại mỗi nút.
-                - **Class**: Nhãn được dự đoán tại nút lá.
-
-                Biểu đồ trên thể hiện cách mô hình phân loại dữ liệu hoa Iris dựa trên các đặc trưng như chiều dài cánh hoa hoặc đài hoa.
-                """)
 
             elif model_option1 == "SVM":
                 st.markdown("""
@@ -263,7 +315,109 @@ def run_ClassificationMinst_app():
                 **Cách hoạt động**:  
                 - **SVM** cố gắng tối ưu hóa ranh giới phân chia giữa các lớp bằng cách tối đa hóa "khoảng cách lề" (margin) giữa siêu phẳng và các điểm dữ liệu gần nhất. 
                 - Trong trường hợp dữ liệu không thể phân chia tuyến tính, SVM sử dụng các kỹ thuật như biến đổi không gian (thông qua kernel) để đưa dữ liệu vào không gian cao hơn, nơi có thể phân chia được.
-                """) 
+                """)
+
+                st.markdown("---")  
+                st.markdown("### **Minh họa Support Vector Machine (SVM)**")  
+                # Tạo dữ liệu mẫu
+                # Dữ liệu tuyến tính với nhiễu
+                np.random.seed(42)
+                X_linear = np.concatenate([np.random.normal(0, 1, (50, 2)), np.random.normal(3, 1, (50, 2))])
+                y_linear = np.array([0] * 50 + [1] * 50)
+                X_linear = np.vstack([X_linear, np.random.normal(1.5, 0.5, (10, 2))])
+                y_linear = np.hstack([y_linear, [0] * 5 + [1] * 5])
+
+                # Dữ liệu không tuyến tính (hình tròn)
+                X_nonlinear, y_nonlinear = make_circles(n_samples=100, factor=0.5, noise=0.1, random_state=42)
+
+                # Thanh trượt để chọn giá trị C
+                st.markdown("**Tùy chỉnh tham số C**")  
+                C = st.slider("Chọn giá trị C (Regularization):", 0.1, 1000.0, 1.0, step=0.1)
+
+                # Biểu đồ minh họa SVM với kernel tuyến tính
+                st.markdown("#### **Biểu đồ minh họa SVM (Kernel tuyến tính)**")  
+                fig1, ax1 = plt.subplots(figsize=(8, 6))
+                clf_linear = SVC(kernel='linear', C=C)
+                clf_linear.fit(X_linear, y_linear)
+
+                # Vẽ dữ liệu
+                ax1.scatter(X_linear[:, 0], X_linear[:, 1], c=y_linear, cmap='bwr', edgecolor='k', label='Data Points')
+                ax1.scatter(clf_linear.support_vectors_[:, 0], clf_linear.support_vectors_[:, 1], s=200, facecolors='none', edgecolor='k', label='Support Vectors')
+
+                # Vẽ siêu phẳng và margin
+                w = clf_linear.coef_[0]
+                b = clf_linear.intercept_[0]
+                x_plot = np.linspace(min(X_linear[:, 0]), max(X_linear[:, 0]), 100)
+                y_plot = -(w[0] * x_plot + b) / w[1]  # Siêu phẳng
+                margin = 1 / np.sqrt(np.sum(clf_linear.coef_ ** 2))
+                y_margin_up = y_plot + margin  # Margin trên
+                y_margin_down = y_plot - margin  # Margin dưới
+
+                ax1.plot(x_plot, y_plot, 'k-', label='Siêu phẳng (Decision Boundary)')
+                ax1.plot(x_plot, y_margin_up, 'k--', label='Tối ưu hóa lề (Margin)')
+                ax1.plot(x_plot, y_margin_down, 'k--')
+
+                ax1.set_title(f'SVM với C = {C} (Kernel tuyến tính)')
+                ax1.set_xlabel('Feature 1')
+                ax1.set_ylabel('Feature 2')
+                ax1.legend()
+
+                # Hiển thị biểu đồ 1
+                st.pyplot(fig1)
+
+                # Biểu đồ minh họa SVM với kernel RBF
+                st.markdown("#### **Biểu đồ minh họa SVM (Kernel RBF - Kernel Trick)**")  
+                fig2, ax2 = plt.subplots(figsize=(8, 6))
+                clf_rbf = SVC(kernel='rbf', C=C)
+                clf_rbf.fit(X_nonlinear, y_nonlinear)
+
+                # Vẽ dữ liệu
+                ax2.scatter(X_nonlinear[:, 0], X_nonlinear[:, 1], c=y_nonlinear, cmap='bwr', edgecolor='k', label='Data Points')
+                ax2.scatter(clf_rbf.support_vectors_[:, 0], clf_rbf.support_vectors_[:, 1], s=200, facecolors='none', edgecolor='k', label='Support Vectors')
+
+                # Vẽ ranh giới quyết định (không tuyến tính)
+                x_min, x_max = X_nonlinear[:, 0].min() - 1, X_nonlinear[:, 0].max() + 1
+                y_min, y_max = X_nonlinear[:, 1].min() - 1, X_nonlinear[:, 1].max() + 1
+                xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), np.linspace(y_min, y_max, 100))
+                Z = clf_rbf.predict(np.c_[xx.ravel(), yy.ravel()])
+                Z = Z.reshape(xx.shape)
+                ax2.contour(xx, yy, Z, levels=[0], colors='k', linestyles=['-'], label='Siêu phẳng (Decision Boundary)')
+
+                ax2.set_title(f'SVM với C = {C} (Kernel RBF)')
+                ax2.set_xlabel('Feature 1')
+                ax2.set_ylabel('Feature 2')
+                ax2.legend()
+
+                # Hiển thị biểu đồ 2
+                st.pyplot(fig2)
+
+                # Giải thích các thành phần
+                st.markdown("#### **Giải thích các thành phần trong biểu đồ:**")  
+                st.write("""
+                - **Siêu phẳng (Decision Boundary)**: 
+                    - **Trong biểu đồ kernel tuyến tính**: Đường thẳng đen phân chia hai lớp dữ liệu.
+                    - **Trong biểu đồ kernel RBF**: Đường cong đen (ranh giới quyết định) thể hiện siêu phẳng trong không gian cao hơn sau khi áp dụng kernel trick.
+                - **Tối ưu hóa lề (Margin)**: 
+                    - **Trong biểu đồ kernel tuyến tính**: Hai đường nét đứt đen song song với siêu phẳng, thể hiện khoảng cách tối đa đến support vectors.
+                    - Support vectors (điểm khoanh tròn) xác định margin.
+                - **Tham số C (Regularization)**: 
+                    - Điều chỉnh bằng thanh trượt. Khi \( C \) lớn, margin hẹp hơn, mô hình cố gắng phân loại đúng tất cả các điểm (nhưng dễ overfitting). Khi \( C \) nhỏ, margin rộng hơn, chấp nhận một số lỗi để tổng quát hóa tốt hơn.
+                    - Các điểm nhiễu (nếu có) sẽ nằm trong margin hoặc sai phía siêu phẳng khi \( C \) nhỏ.
+                - **Kernel Trick**: 
+                    - Minh họa trong **biểu đồ kernel RBF**, nơi dữ liệu không tuyến tính (hình tròn) được phân tách bằng ranh giới cong nhờ ánh xạ vào không gian cao hơn.
+                """)
+
+                # Giải thích biểu đồ
+                st.markdown("#### **Giải thích biểu đồ:**")  
+                st.write("""
+                - **Điểm dữ liệu**: Các điểm màu đỏ (Class 0) và xanh (Class 1) đại diện cho dữ liệu huấn luyện.
+                - **Support Vectors**: Các điểm được khoanh tròn là support vectors, nằm gần nhất với siêu phẳng và xác định margin.
+                - **Siêu phẳng**: Đường thẳng đen $$( w^T x + b = 0 )$$ là ranh giới quyết định.
+                - **Margin**: Hai đường nét đứt là biên của margin, được tối đa hóa bởi SVM.
+                - **Tham số C**: Khi $$( C )$$ lớn, margin hẹp hơn và mô hình cố gắng phân loại đúng tất cả các điểm. Khi $$( C )$$ nhỏ, margin rộng hơn, chấp nhận một số lỗi để tổng quát hóa tốt hơn.
+                """)
+
+ 
                 st.markdown("---")          
                 st.markdown("""
                 ### Công thức toán học:  
@@ -290,53 +444,22 @@ def run_ClassificationMinst_app():
                 - $$(x_i)$$: Vector đặc trưng của mẫu \(i\).  
 
                 **Kernel Trick**: Khi dữ liệu không tuyến tính, sử dụng hàm kernel $$(K(x_i, x_j))$$ để ánh xạ dữ liệu vào không gian cao hơn.
-                """)           
-                st.markdown("---")
-                st.markdown("""  
-                ### Áp dụng vào ngữ cảnh SVM với MNIST:  
-                - Trong thực tế, trước khi áp dụng SVM trên MNIST, dữ liệu thường được chuẩn hóa (ví dụ: chia giá trị pixel cho 255 để đưa về khoảng [0, 1]) để cải thiện hiệu suất của kernel và tránh các vấn đề số học.  
-                - Do MNIST có 70,000 mẫu (60,000 huấn luyện và 10,000 kiểm tra) với 784 đặc trưng (28x28 pixel), SVM có thể yêu cầu giảm chiều dữ liệu (ví dụ: sử dụng PCA) hoặc tối ưu hóa tham số (như \(C\) và \(\gamma\) trong kernel RBF) để giảm độ phức tạp tính toán và tăng độ chính xác.  
-                - SVM trên MNIST thường sử dụng chiến lược One-vs-Rest hoặc One-vs-One để xử lý 10 lớp, với kernel RBF là lựa chọn phổ biến do tính phi tuyến của dữ liệu. Tuy nhiên, với dữ liệu lớn và phức tạp như MNIST, các mô hình như Convolutional Neural Networks (CNN) thường hiệu quả hơn, nhưng SVM vẫn có thể áp dụng trên tập con nhỏ hơn hoặc sau khi giảm chiều.
-                """)
+                            
+                **Tham số C (Regularization)**:  
+                - Trong trường hợp dữ liệu không thể phân tách tuyến tính hoàn hảo , tham số $$(C)$$ được sử dụng để cân bằng giữa việc tối đa hóa lề và giảm thiểu lỗi phân loại.  
+                -$$(C)$$ kiểm soát mức độ phạt cho các điểm dữ liệu bị phân loại sai (vi phạm lề). Giá trị $$(C)$$ càng lớn, mô hình càng cố gắng phân loại đúng tất cả các điểm (giống hard margin), nhưng có thể dẫn đến overfitting. Giá trị $$(C)$$ nhỏ hơn sẽ cho phép một số điểm bị phân loại sai để tăng lề, giúp mô hình tổng quát hóa tốt hơn.  
+                - Phương trình tối ưu hóa với soft margin bao gồm \(C\):  
+                $$
+                \\min_{w, b, \\xi} \\frac{1}{2} ||w||^2 + C \\sum_{i=1}^n \\xi_i \\quad \\text{với điều kiện} \\quad y_i (w^T x_i + b) \\geq 1 - \\xi_i, \\quad \\xi_i \\geq 0, \\forall i
+                $$
+                Trong đó:  
+                - $$(C)$$: Tham số điều chỉnh mức độ phạt (regularization parameter).  
+                - $$(\\xi_i)$$: Biến slack (đo lường mức độ vi phạm lề của mẫu $$(i)$$).
+                """) 
+               
+                
 
-                st.markdown("---")
-                st.markdown("### Ví dụ về SVM: minh họa về ranh giới quyết định (decision boundary)")
-                X = np.array([[1, 2], [2, 3], [3, 3], [6, 5], [7, 8], [8, 8]])  # 6 điểm (x, y)
-                y = np.array([0, 0, 0, 1, 1, 1])  # Nhãn (0 hoặc 1)
-
-                # Huấn luyện mô hình SVM
-                model = SVC(kernel="linear")
-                model.fit(X, y)
-
-                # Tạo biểu đồ
-                fig, ax = plt.subplots()
-                ax.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Paired, edgecolors='k')
-
-                # Vẽ đường phân chia
-                xlim = ax.get_xlim()
-                ylim = ax.get_ylim()
-
-                # Tạo lưới điểm để vẽ ranh giới
-                xx = np.linspace(xlim[0], xlim[1], 30)
-                yy = np.linspace(ylim[0], ylim[1], 30)
-                YY, XX = np.meshgrid(yy, xx)
-                xy = np.vstack([XX.ravel(), YY.ravel()]).T
-                Z = model.decision_function(xy).reshape(XX.shape)
-
-                # Vẽ ranh giới quyết định của SVM
-                ax.contour(XX, YY, Z, colors='k', levels=[0], linestyles=['--'])
-
-                ax.set_xlabel("X1")
-                ax.set_ylabel("X2")
-                # Hiển thị trên Streamlit
-                st.pyplot(fig)
-                st.markdown("""
-                📝 Giải thích về biểu đồ SVM ví dụ trên:
-                - Các **điểm tròn** đại diện cho dữ liệu, với màu sắc khác nhau biểu thị hai lớp.
-                - Đường **đứt nét** là ranh giới quyết định (siêu phẳng) phân chia hai lớp.
-                - **Điểm bên trái** thuộc lớp `0`, **điểm bên phải** thuộc lớp `1`.
-                """)
-
+                
 
     with tab_load:
         with st.expander("**Phân chia dữ liệu**", expanded=True):    
@@ -386,137 +509,161 @@ def run_ClassificationMinst_app():
             if model_option == "Decision Tree":
                 st.subheader("🌳 Decision Tree Classifier")
                         
-                        # Lựa chọn tham số cho Decision Tree
-                # criterion = st.selectbox("Chọn tiêu chí phân nhánh:", (["entropy"]))
+                # Lựa chọn tham số cho Decision Tree
                 max_depth = st.slider("Chọn độ sâu tối đa của cây:", min_value=1, max_value=20, value=5)
                 st.session_state["dt_max_depth"] = max_depth
                 n_folds = st.slider("Chọn số folds cho K-Fold Cross-Validation:", min_value=2, max_value=10, value=5)
 
                 if st.button("🚀 Huấn luyện mô hình"):
-                    with st.spinner("Đang huấn luyện mô hình..."):
-                        with mlflow.start_run():
-                            # Khởi tạo mô hình Decision Tree
-                            dt_model = DecisionTreeClassifier( max_depth=max_depth, random_state=42)
+                    with mlflow.start_run():
+                        # Khởi tạo mô hình Decision Tree
+                        dt_model = DecisionTreeClassifier(max_depth=max_depth, random_state=42)
 
-                            # Thực hiện K-Fold Cross-Validation với số folds do người dùng chọn
-                            kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
-                            cv_scores = []
+                        # Thực hiện K-Fold Cross-Validation với số folds do người dùng chọn
+                        kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
+                        cv_scores = []
+                        progress_bar = st.progress(0)  # Khởi tạo thanh trạng thái ở 0%
+                        progress_text = st.empty()  # Tạo một vùng trống để hiển thị % tiến trình
+                        total_folds = n_folds
 
-                            for train_index, val_index in kf.split(X_train):
-                                X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
-                                y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
+                        for i, (train_index, val_index) in enumerate(kf.split(X_train)):
+                            X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
+                            y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
 
-                                # Huấn luyện mô hình trên fold hiện tại
-                                dt_model.fit(X_train_fold, y_train_fold)
-                                # Dự đoán và tính độ chính xác trên tập validation của fold
-                                y_val_pred_fold = dt_model.predict(X_val_fold)
-                                fold_accuracy = accuracy_score(y_val_fold, y_val_pred_fold)
-                                cv_scores.append(fold_accuracy)
+                            # Huấn luyện mô hình trên fold hiện tại
+                            dt_model.fit(X_train_fold, y_train_fold)
+                            # Dự đoán và tính độ chính xác trên tập validation của fold
+                            y_val_pred_fold = dt_model.predict(X_val_fold)
+                            fold_accuracy = accuracy_score(y_val_fold, y_val_pred_fold)
+                            cv_scores.append(fold_accuracy)
 
-                            # Tính độ chính xác trung bình từ cross-validation
-                            mean_cv_accuracy = np.mean(cv_scores)
-                            std_cv_accuracy = np.std(cv_scores)  # Độ lệch chuẩn để đánh giá độ ổn định
+                            # Cập nhật thanh trạng thái và hiển thị phần trăm
+                            progress = (i + 1) / total_folds  # Tính phần trăm hoàn thành
+                            progress_bar.progress(progress)  # Cập nhật thanh trạng thái
+                            progress_text.text(f"Tiến trình huấn luyện: {int(progress * 100)}%")  # Hiển thị % cụ thể
 
-                            # Huấn luyện mô hình trên toàn bộ X_train, y_train để sử dụng sau này
-                            dt_model.fit(X_train, y_train)
-                            y_val_pred_dt = dt_model.predict(X_val)
-                            accuracy_dt = accuracy_score(y_val, y_val_pred_dt)
+                        # Tính độ chính xác trung bình từ cross-validation
+                        mean_cv_accuracy = np.mean(cv_scores)
+                        std_cv_accuracy = np.std(cv_scores)  # Độ lệch chuẩn để đánh giá độ ổn định
 
-                            # Ghi log vào MLflow
-                            mlflow.log_param("model_type", "Decision Tree")
+                        # Huấn luyện mô hình trên toàn bộ X_train, y_train để sử dụng sau này
+                        dt_model.fit(X_train, y_train)
+                        y_val_pred_dt = dt_model.predict(X_val)
+                        accuracy_dt = accuracy_score(y_val, y_val_pred_dt)
+
+                        # Ghi log vào MLflow
+                        mlflow.log_param("model_type", "Decision Tree")
+                        mlflow.log_param("max_depth", max_depth)
+                        mlflow.log_param("n_folds", n_folds)
+                        mlflow.log_metric("mean_cv_accuracy", mean_cv_accuracy)
+                        mlflow.log_metric("std_cv_accuracy", std_cv_accuracy)
+                        mlflow.log_metric("accuracy", accuracy_dt)
+                        mlflow.sklearn.log_model(dt_model, "decision_tree_model")
+
+                        # Lưu vào session_state
+                        st.session_state["selected_model_type"] = "Decision Tree"
+                        st.session_state["trained_model"] = dt_model 
+                        st.session_state["X_train"] = X_train 
+                        st.session_state["dt_max_depth"] = max_depth
+                        st.session_state["n_folds"] = n_folds 
+
+                        st.markdown("---") 
+                        st.write(f"🔹Mô hình được chọn để đánh giá: `{model_option}`")
+                        st.write("🔹 Tham số mô hình:")
+                        st.write(f"- **Độ sâu tối đa**: `{max_depth}`")
+                        st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
+                        st.write(f"✅ **Độ chính xác trung bình từ K-Fold Cross-Validation ({n_folds} folds):** `{mean_cv_accuracy:.4f} ± {std_cv_accuracy:.4f}`")
+                        st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_dt:.4f}`")
                         
-                            mlflow.log_param("max_depth", max_depth)
-                            mlflow.log_param("n_folds", n_folds)  # Ghi số folds do người dùng chọn
-                            mlflow.log_metric("mean_cv_accuracy", mean_cv_accuracy)
-                            mlflow.log_metric("std_cv_accuracy", std_cv_accuracy)
-                            mlflow.log_metric("accuracy", accuracy_dt)
-                            mlflow.sklearn.log_model(dt_model, "decision_tree_model")
-
-                            # Lưu vào session_state
-                            st.session_state["selected_model_type"] = "Decision Tree"
-                            st.session_state["trained_model"] = dt_model 
-                            st.session_state["X_train"] = X_train 
-                            st.session_state["dt_max_depth"] = max_depth
-                            st.session_state["n_folds"] = n_folds 
-
-                    
-                            st.markdown("---") 
-                            st.write(f"🔹Mô hình được chọn để đánh giá: `{model_option}`")
-                            st.write("🔹 Tham số mô hình:")
-                            st.write(f"- **Độ sâu tối đa**: `{max_depth}`")
-                            st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
-                            st.write(f"✅ **Độ chính xác trung bình từ K-Fold Cross-Validation ({n_folds} folds):** `{mean_cv_accuracy:.4f} ± {std_cv_accuracy:.4f}`")
-                            st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_dt:.4f}`")
-                            
-                        mlflow.end_run()
+                    mlflow.end_run()
             elif model_option == "SVM":
                 st.subheader("🌀 Support Vector Machine (SVM)")
                             
-                            # Lựa chọn tham số cho SVM
+                # Lựa chọn tham số cho SVM
                 kernel = st.selectbox("Chọn kernel:", ["linear", "poly", "rbf", "sigmoid"])
                 C = st.slider("Chọn giá trị C (điều chỉnh mức độ regularization):", min_value=0.1, max_value=10.0, value=1.0)
                 n_folds = st.slider("Chọn số folds cho K-Fold Cross-Validation:", min_value=2, max_value=10, value=5)
                 if st.button("🚀 Huấn luyện mô hình"):
-                    with st.spinner("Đang huấn luyện mô hình..."):
-                        with mlflow.start_run():
-                            # Khởi tạo mô hình SVM
-                            svm_model = SVC(kernel=kernel, C=C, random_state=42)
+                    with mlflow.start_run():
+                        # Khởi tạo mô hình SVM
+                        svm_model = SVC(kernel=kernel, C=C, random_state=42)
 
-                            # Thực hiện K-Fold Cross-Validation với số folds do người dùng chọn
-                            kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
-                            cv_scores = []
+                        # Thực hiện K-Fold Cross-Validation với số folds do người dùng chọn
+                        kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
+                        cv_scores = []
+                        progress_bar = st.progress(0)  # Khởi tạo thanh trạng thái ở 0%
+                        progress_text = st.empty()  # Tạo một vùng trống để hiển thị % tiến trình
+                        total_folds = n_folds
 
-                            for train_index, val_index in kf.split(X_train):
-                                X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
-                                y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
+                        for i, (train_index, val_index) in enumerate(kf.split(X_train)):
+                            X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
+                            y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
 
-                                # Huấn luyện mô hình trên fold hiện tại
-                                svm_model.fit(X_train_fold, y_train_fold)
-                                # Dự đoán và tính độ chính xác trên tập validation của fold
-                                y_val_pred_fold = svm_model.predict(X_val_fold)
-                                fold_accuracy = accuracy_score(y_val_fold, y_val_pred_fold)
-                                cv_scores.append(fold_accuracy)
+                            # Huấn luyện mô hình trên fold hiện tại
+                            svm_model.fit(X_train_fold, y_train_fold)
+                            # Dự đoán và tính độ chính xác trên tập validation của fold
+                            y_val_pred_fold = svm_model.predict(X_val_fold)
+                            fold_accuracy = accuracy_score(y_val_fold, y_val_pred_fold)
+                            cv_scores.append(fold_accuracy)
 
-                            # Tính độ chính xác trung bình từ cross-validation
-                            mean_cv_accuracy = np.mean(cv_scores)
-                            std_cv_accuracy = np.std(cv_scores)  # Độ lệch chuẩn để đánh giá độ ổn định
+                            # Cập nhật thanh trạng thái và hiển thị phần trăm
+                            progress = (i + 1) / total_folds  # Tính phần trăm hoàn thành
+                            progress_bar.progress(progress)  # Cập nhật thanh trạng thái
+                            progress_text.text(f"Tiến trình huấn luyện: {int(progress * 100)}%")  # Hiển thị % cụ thể
+                            time.sleep(0.5)  # Thêm delay 0.5 giây để hiển thị rõ hơn
 
-                            # Huấn luyện mô hình trên toàn bộ X_train, y_train để sử dụng sau này
+                        # Kiểm tra dữ liệu trước khi tính toán
+                        if len(cv_scores) == 0:
+                            st.error("Lỗi: Không có dữ liệu từ Cross-Validation!")
+                            mlflow.end_run()
+                            return
+
+                        # Tính độ chính xác trung bình từ cross-validation
+                        mean_cv_accuracy = np.mean(cv_scores)
+                        std_cv_accuracy = np.std(cv_scores)  # Độ lệch chuẩn để đánh giá độ ổn định
+
+                        # Kiểm tra và huấn luyện trên toàn bộ dữ liệu
+                        try:
                             svm_model.fit(X_train, y_train)
                             y_val_pred_svm = svm_model.predict(X_val)
                             accuracy_svm = accuracy_score(y_val, y_val_pred_svm)
+                        except Exception as e:
+                            st.error(f"Lỗi khi huấn luyện hoặc dự đoán: {str(e)}")
+                            mlflow.end_run()
+                            return
 
-                            # Ghi log vào MLflow
-                            mlflow.log_param("model_type", "SVM")
-                            mlflow.log_param("kernel", kernel)
-                            mlflow.log_param("C_value", C)
-                            mlflow.log_param("n_folds", n_folds)  # Ghi số folds do người dùng chọn
-                            mlflow.log_metric("mean_cv_accuracy", mean_cv_accuracy)
-                            mlflow.log_metric("std_cv_accuracy", std_cv_accuracy)
-                            mlflow.log_metric("accuracy", accuracy_svm)
-                            mlflow.sklearn.log_model(svm_model, "svm_model")
+                        # Ghi log vào MLflow
+                        mlflow.log_param("model_type", "SVM")
+                        mlflow.log_param("kernel", kernel)
+                        mlflow.log_param("C_value", C)
+                        mlflow.log_param("n_folds", n_folds)
+                        mlflow.log_metric("mean_cv_accuracy", mean_cv_accuracy)
+                        mlflow.log_metric("std_cv_accuracy", std_cv_accuracy)
+                        mlflow.log_metric("accuracy", accuracy_svm)
+                        mlflow.sklearn.log_model(svm_model, "svm_model")
 
-                            # Lưu vào session_state
-                            st.session_state["selected_model_type"] = "SVM"
-                            st.session_state["trained_model"] = svm_model  
-                            st.session_state["X_train"] = X_train
-                            st.session_state["svm_kernel"] = kernel  # Lưu kernel vào session_state
-                            st.session_state["svm_C"] = C  # Lưu C vào session_state
-                            st.session_state["n_folds"] = n_folds
+                        # Lưu vào session_state
+                        st.session_state["selected_model_type"] = "SVM"
+                        st.session_state["trained_model"] = svm_model  
+                        st.session_state["X_train"] = X_train
+                        st.session_state["svm_kernel"] = kernel
+                        st.session_state["svm_C"] = C
+                        st.session_state["n_folds"] = n_folds
 
-                            st.markdown("---") 
-                            st.write(f"🔹Mô hình được chọn để đánh giá: `{model_option}`")
-                            kernel = st.session_state.get("svm_kernel", "linear")
-                            C = st.session_state.get("svm_C", 1.0)
-                            st.write("🔹 **Tham số mô hình:**")
-                            st.write(f"- Kernel: `{kernel}`")
-                            st.write(f"- C (Regularization): `{C}`")
-                            st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
-                            st.write(f"✅ **Độ chính xác trung bình từ K-Fold Cross-Validation ({n_folds} folds):** `{mean_cv_accuracy:.4f} ± {std_cv_accuracy:.4f}`")
-                            st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_svm:.4f}`")
-                            
-                        mlflow.end_run()
-
+                        # Hiển thị kết quả
+                        st.markdown("---") 
+                        st.write(f"🔹Mô hình được chọn để đánh giá: `{model_option}`")
+                        kernel = st.session_state.get("svm_kernel", "linear")
+                        C = st.session_state.get("svm_C", 1.0)
+                        st.write("🔹 **Tham số mô hình:**")
+                        st.write(f"- Kernel: `{kernel}`")
+                        st.write(f"- C (Regularization): `{C}`")
+                        st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
+                        st.write(f"✅ **Độ chính xác trung bình từ K-Fold Cross-Validation ({n_folds} folds):** `{mean_cv_accuracy:.4f} ± {std_cv_accuracy:.4f}`")
+                        st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_svm:.4f}`")
+                        
+                    mlflow.end_run()
+                        
     with tab_demo:   
         with st.expander("**Dự đoán kết quả**", expanded=True):
             st.write("**Dự đoán trên ảnh do người dùng tải lên**")
@@ -582,7 +729,7 @@ def run_ClassificationMinst_app():
         try:
             client = MlflowClient()
             experiment_name = "Classification"
-    
+
             # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
             if experiment is None:
@@ -591,22 +738,22 @@ def run_ClassificationMinst_app():
             else:
                 experiment_id = experiment.experiment_id
                 st.info(f"Đang sử dụng experiment ID: {experiment_id}")
-    
+
             mlflow.set_experiment(experiment_name)
-    
+
             # Truy vấn các run trong experiment
             runs = client.search_runs(experiment_ids=[experiment_id])
-    
+
             # 1) Chọn và đổi tên Run Name
             st.subheader("Đổi tên Run")
             if runs:
                 run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
-                               for run in runs}
+                            for run in runs}
                 selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
-                                                          options=list(run_options.keys()), 
-                                                          format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 new_run_name = st.text_input("Nhập tên mới cho Run:", 
-                                             value=run_options[selected_run_id_for_rename].split(" - ")[0])
+                                            value=run_options[selected_run_id_for_rename].split(" - ")[0])
                 if st.button("Cập nhật tên Run"):
                     if new_run_name.strip():
                         client.set_tag(selected_run_id_for_rename, "mlflow.runName", new_run_name.strip())
@@ -615,48 +762,50 @@ def run_ClassificationMinst_app():
                         st.warning("Vui lòng nhập tên mới cho Run.")
             else:
                 st.info("Chưa có Run nào được log.")
-    
+
             # 2) Xóa Run
             st.subheader("Danh sách Run")
             if runs:
                 selected_run_id_to_delete = st.selectbox("", 
-                                                         options=list(run_options.keys()), 
-                                                         format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 if st.button("Xóa Run", key="delete_run"):
                     client.delete_run(selected_run_id_to_delete)
                     st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
                     st.experimental_rerun()  # Tự động làm mới giao diện
             else:
                 st.info("Chưa có Run nào để xóa.")
-    
+
             # 3) Danh sách các thí nghiệm
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
-                                               options=list(run_options.keys()), 
-                                               format_func=lambda x: run_options[x])
-    
+                                            options=list(run_options.keys()), 
+                                            format_func=lambda x: run_options[x])
+
                 # 4) Hiển thị thông tin chi tiết của Run được chọn
                 selected_run = client.get_run(selected_run_id)
                 st.write(f"**Run ID:** {selected_run_id}")
                 st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
-    
+
                 st.markdown("### Tham số đã log")
-                st.json(selected_run.data.params)
-    
+                params = {
+                    "model_type": selected_run.data.params.get("model_type", "N/A"),
+                    "max_depth": selected_run.data.params.get("max_depth", "N/A"),  # Chỉ có trong Decision Tree
+                    "kernel": selected_run.data.params.get("kernel", "N/A"),        # Chỉ có trong SVM
+                    "C_value": selected_run.data.params.get("C_value", "N/A"),      # Chỉ có trong SVM
+                    "n_folds": selected_run.data.params.get("n_folds", "N/A")
+                }
+                st.json(params)
+
                 st.markdown("### Chỉ số đã log")
                 metrics = {
                     "mean_cv_accuracy": selected_run.data.metrics.get("mean_cv_accuracy", "N/A"),
                     "std_cv_accuracy": selected_run.data.metrics.get("std_cv_accuracy", "N/A"),
-                    "accuracy": selected_run.data.metrics.get("accuracy", "N/A"),
-                    "model_type": selected_run.data.metrics.get("model_type", "N/A"),
-                    "kernel": selected_run.data.metrics.get("kernel", "N/A"),
-                    "C_value": selected_run.data.metrics.get("C_value", "N/A")
-                
-
+                    "accuracy": selected_run.data.metrics.get("accuracy", "N/A")
                 }
                 st.json(metrics)
-    
+
                 # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
                 mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
@@ -664,7 +813,7 @@ def run_ClassificationMinst_app():
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
                 st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
-    
+
         except Exception as e:
             st.error(f"Không thể kết nối với MLflow: {e}")
 
