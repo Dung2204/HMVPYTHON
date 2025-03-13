@@ -21,6 +21,7 @@ import networkx as nx
 import plotly.express as px
 import tensorflow as tf
 from tensorflow.keras import layers, models, callbacks  # Thêm import callbacks
+from streamlit_drawable_canvas import st_canvas
 from sklearn.datasets import make_classification
 from mlflow.tracking import MlflowClient
 
@@ -168,10 +169,37 @@ def run_NeuralNetwork_app():
                     """
                     - **Neural Network (Mạng Nơ-ron Nhân tạo)** là một mô hình học máy được lấy cảm hứng từ cấu trúc của mạng nơ-ron sinh học trong não người.  
                     - Nó bao gồm các **nơ-ron** (nodes) được tổ chức thành **lớp** (layers): lớp đầu vào (input layer), các lớp ẩn (hidden layers), và lớp đầu ra (output layer).  
-                    - Các nơ-ron được kết nối bằng **trọng số** (weights), và mô hình học bằng cách điều chỉnh các trọng số này để giảm thiểu sai số dự đoán thông qua quá trình huấn luyện.
                     - Neural Network đặc biệt mạnh trong việc xử lý các bài toán phi tuyến tính và học các đặc trưng phức tạp từ dữ liệu.
                     """
             )
+            st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image1.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+
+            st.markdown("---")
+            st.markdown("### Cấu trúc Neural Network")
+
+            st.markdown(
+                """
+                Mạng Nơ-ron Nhân tạo (Neural Network) có cấu trúc cơ bản bao gồm các thành phần chính sau:
+
+                1. **Lớp đầu vào (Input Layer)**:  
+                - Đây là nơi nhận dữ liệu thô từ bài toán (ví dụ: giá trị pixel của ảnh, số liệu thống kê, văn bản, v.v.).  
+                - Số lượng nơ-ron trong lớp này tương ứng với số đặc trưng (features) của dữ liệu đầu vào.
+
+                2. **Các lớp ẩn (Hidden Layers)**:  
+                - Là các lớp trung gian giữa lớp đầu vào và lớp đầu ra, nơi diễn ra quá trình xử lý và học hỏi.  
+                - Mỗi lớp ẩn bao gồm nhiều nơ-ron, và số lượng lớp ẩn cũng như nơ-ron trong mỗi lớp có thể thay đổi tùy thuộc vào độ phức tạp của bài toán.  
+                - Các nơ-ron trong lớp ẩn áp dụng **hàm kích hoạt (activation function)** như ReLU, Sigmoid hoặc Tanh để xử lý tính phi tuyến tính.
+                - **Lưu ý rằng:** một Neural Network chỉ có 1 lớp đầu vào và 1 lớp đầu ra nhưng có thể có nhiều các lớp ẩn 
+                3. **Lớp đầu ra (Output Layer)**:  
+                - Lớp này tạo ra kết quả cuối cùng của mạng (dự đoán hoặc phân loại).  
+                - Số lượng nơ-ron trong lớp đầu ra phụ thuộc vào loại bài toán:  
+                    - **Phân loại nhị phân**: 1 nơ-ron (ví dụ: dùng hàm Sigmoid).  
+                    - **Phân loại đa lớp**: Số nơ-ron bằng số lớp (ví dụ: dùng hàm Softmax).  
+                    - **Hồi quy**: 1 hoặc nhiều nơ-ron tùy theo số lượng giá trị cần dự đoán.
+                """
+            )
+            st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image2.png", caption="Cấu trúc Neural Network có 2 hoặc nhiều lớp ẩn (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+
             st.markdown("---")
             st.markdown("### Các bước huấn luyện Neural Network")
             st.write("1. **Khởi tạo mô hình**: Xác định số lớp ẩn, số nơ-ron trong mỗi lớp, và hàm kích hoạt.")
@@ -179,6 +207,60 @@ def run_NeuralNetwork_app():
             st.write("3. **Lan truyền xuôi (Forward Propagation)**: Tính toán đầu ra từ đầu vào qua các lớp.")
             st.write("4. **Lan truyền ngược (Backpropagation)**: Cập nhật trọng số dựa trên hàm mất mát.")
             st.write("5. **Dự đoán**: Sử dụng mô hình đã huấn luyện để dự đoán trên dữ liệu mới.")
+            st.markdown("---")
+            st.markdown("### Các hàm kích hoạt trong Neural Network")
+            # Hàm Sigmoid
+            st.markdown("**1. Hàm Sigmoid:**")
+            st.latex(r"f(x) = \frac{1}{1 + e^{-x}}")
+            st.markdown(
+                """
+                - **Trong đó:**
+                    - $$e^x$$ và $$e^{-x}$$: là hàm mũ với cơ số $$e$$ và số mũ $$x$$ hoặc $$-x$$
+                    - $$( x )$$: Giá trị đầu vào của nơ-ron (tổng có trọng số cộng với bias).  
+                    - $$(( f(x) )$$: Đầu ra của hàm Sigmoid, nằm trong khoảng $$(((0, 1))$$.  
+                """
+            )
+            st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image3.png", caption="Biểu đồ hàm Sigmoid (Nguồn:https://byvn.net/qW4e)", use_container_width=True)
+
+            # Hàm Tanh
+            st.markdown("**2. Hàm Hyperbolic Tangent (Tanh):**")
+            st.latex(r"f(x) = \tanh(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}")
+            st.markdown(
+                """
+                - **Trong đó:**
+                    - $$( x )$$: Giá trị đầu vào của nơ-ron.  
+                    - $$(( f(x) )$$: Đầu ra của hàm Tanh, nằm trong khoảng $$(((-1 , 1))$$.  
+
+                """
+            )
+            st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image4.png", caption="Biểu đồ hàm Hyperbolic Tangent (Tanh) (Nguồn:https://byvn.net/qW4e)", use_container_width=True)
+
+            # Hàm ReLU
+            st.markdown("**3. Hàm ReLU (Rectified Linear Unit):**")
+            st.latex(r"f(x) = \max(0, x)")
+            st.markdown(
+                """
+                - **Trong đó:**
+                    - $$( x )$$: Giá trị đầu vào của nơ-ron.  
+                    - $$(( f(x) )$$: Đầu ra của hàm ReLU, bằng 0 nếu $$( x < 0 )$$, bằng $$( x )$$ nếu $$( x \geq 0 )$$.  
+                """
+            )
+            st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image5.png", caption="Biểu đồ hàm ReLU (Rectified Linear Unit)(Nguồn:https://byvn.net/qW4e)", use_container_width=True)
+
+            # Hàm Softmax
+            st.markdown("**5. Hàm Softmax:**")
+            st.latex(r"f(x_i) = \frac{e^{z_i}}{\sum_{j=1}^{N} e^{z_j}}")
+            st.markdown(
+                """
+                - **Trong đó:**
+                    - $$( x_i )$$: Giá trị đầu vào của nơ-ron thứ $$( i )$$.  
+                    - $$( N )$$: Số lượng nơ-ron trong lớp đầu ra (tương ứng với số lớp trong bài toán phân loại).  
+                    - $$( f(x_i) )$$: Đầu ra của hàm Softmax, nằm trong khoảng $$((0, 1))$$ và tổng các đầu ra bằng 1.  
+               
+                """
+            )
+            st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image6.png", caption="Biểu đồ hàm Softmax (Rectified Linear Unit)(Nguồn:https://byvn.net/yvvj)", use_container_width=True)
+
             st.markdown("---")
             st.markdown("### Công thức toán học")
             st.markdown("**1. Lan truyền xuôi (Forward Propagation):**")
@@ -267,6 +349,7 @@ def run_NeuralNetwork_app():
             else:
                 st.error("🚨 Dữ liệu chưa được nạp. Hãy đảm bảo `train_images`, `train_labels` và `test_images` đã được tải trước khi chạy.")
 
+
     with tab_preprocess:
         with st.expander("**Huấn luyện mô hình Neural Network**", expanded=True):
             if "X_train" in st.session_state:
@@ -287,47 +370,123 @@ def run_NeuralNetwork_app():
                 num_classes = len(np.unique(y_train))
                 input_shape = X_train.shape[1]
 
-                # Xây dựng mô hình
-                model = models.Sequential([
-                    layers.Input(shape=(input_shape,)),
-                    layers.Dense(512, activation='relu'),
-                    layers.Dropout(0.2),
-                    layers.Dense(256, activation='relu'),
-                    layers.Dropout(0.2),
-                    layers.Dense(128, activation='relu'),
-                    layers.Dense(num_classes, activation='softmax')
-                ])
-
                 # Cấu hình huấn luyện
-                epochs = st.slider("🔹 Số epoch", min_value=5, max_value=50, value=10, step=5, key="epochs")
-                batch_size = st.selectbox("🔹 Batch size", options=[32, 64, 128, 256], index=0, key="batch_size")
-                optimizer = st.selectbox("🔹 Bộ tối ưu", options=['adam'], index=0, key="optimizer")
-                if optimizer == "adam":
-                    from sklearn.preprocessing import MinMaxScaler
-                    scaler = MinMaxScaler()
-                    if st.toggle("Hiển thị thông tin bộ tối ưu: **adam**"):
-                        st.write("**Adam (Adaptive Moment Estimation)**: Thuật toán tối ưu hóa tự động, điều chỉnh tốc độ học động, giúp hội tụ nhanh và ổn định trên nhiều bài toán, đặc biệt hiệu quả với mạng sâu và dữ liệu có nhiễu (ví dụ: MNIST).")
+                st.markdown("### Cấu hình huấn luyện")
 
+                # Lựa chọn số lượng lớp ẩn
+                num_hidden_layers = st.slider(
+                    "🔹 Số lượng lớp ẩn",
+                    min_value=1,
+                    max_value=5,
+                    value=3,
+                    step=1,
+                    key="num_hidden_layers"
+                )
+                st.write(f"**Số lớp ẩn được chọn:** {num_hidden_layers}")
+
+                # Lựa chọn số nơ-ron cho mỗi lớp ẩn
+                hidden_layer_neurons = []
+                for i in range(num_hidden_layers):
+                    neurons = st.number_input(
+                        f"🔹 Số nơ-ron cho lớp ẩn {i+1}",
+                        min_value=32,
+                        max_value=1024,
+                        value=512 if i == 0 else 256 if i == 1 else 128,
+                        step=32,
+                        key=f"neurons_layer_{i}"
+                    )
+                    hidden_layer_neurons.append(neurons)
+                st.write(f"**Số nơ-ron cho các lớp ẩn:** {hidden_layer_neurons}")
+
+                # Lựa chọn hàm kích hoạt
+                activation_function = st.selectbox(
+                    "🔹 Hàm kích hoạt cho các lớp ẩn",
+                    options=['relu', 'sigmoid', 'tanh'],
+                    index=0,
+                    key="activation_function"
+                )
+
+                # Xây dựng mô hình động dựa trên số lớp và nơ-ron
+                model = models.Sequential()
+                model.add(layers.Input(shape=(input_shape,)))
+
+                # Thêm các lớp ẩn động
+                for neurons in hidden_layer_neurons:
+                    model.add(layers.Dense(neurons, activation=activation_function))
+                    model.add(layers.Dropout(0.2))
+
+                # Thêm lớp đầu ra
+                model.add(layers.Dense(num_classes, activation='softmax'))
+
+                # Số epoch
+                epochs = st.slider("🔹 Số epoch", min_value=5, max_value=50, value=10, step=5, key="epochs")
+
+                # Batch size
+                batch_size = st.selectbox("🔹 Batch size", options=[32, 64, 128, 256], index=0, key="batch_size")
+
+                # Bộ tối ưu
+                optimizer_choice = st.selectbox(
+                    "🔹 Bộ tối ưu",
+                    options=['adam', 'sgd', 'rmsprop', 'adagrad'],
+                    index=0,
+                    key="optimizer"
+                )
+
+                # Learning rate
+                learning_rate = st.slider(
+                    "🔹 Learning Rate (Tốc độ học)",
+                    min_value=0.0001,
+                    max_value=0.1,
+                    value=0.001,
+                    step=0.0001,
+                    format="%.4f",
+                    key="learning_rate"
+                )
+                st.write(f"**Learning Rate được chọn:** {learning_rate}")
+
+                # Cấu hình optimizer với learning rate
+                if optimizer_choice == "adam":
+                    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+                elif optimizer_choice == "sgd":
+                    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
+                elif optimizer_choice == "rmsprop":
+                    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+                elif optimizer_choice == "adagrad":
+                    optimizer = tf.keras.optimizers.Adagrad(learning_rate=learning_rate)
 
                 # Biên dịch mô hình
                 model.compile(optimizer=optimizer,
                             loss='sparse_categorical_crossentropy',
                             metrics=['accuracy'])
 
-
                 # Nút để bắt đầu huấn luyện
                 if st.button("🚀 Bắt đầu huấn luyện", key="train_button"):
                     with st.spinner("Đang huấn luyện mô hình..."):
                         with mlflow.start_run():
-                            # Khởi tạo progress bar
+                            # Khởi tạo progress bar và trạng thái văn bản
                             progress_bar = st.progress(0)
-                            history = None
+                            status_text = st.empty()  # Tạo một placeholder để cập nhật trạng thái %
 
-                            # Huấn luyện mô hình với callback để cập nhật progress bar
-                            class ProgressCallback(tf.keras.callbacks.Callback):
-                                def on_epoch_end(self, epoch, logs=None):
+                            start_time = time.time()  # Bắt đầu đo thời gian tổng
+
+                            # Callback để đo thời gian mỗi epoch và cập nhật trạng thái
+                            class TimeHistory(tf.keras.callbacks.Callback):
+                                def on_train_begin(self, logs={}):
+                                    self.times = []
+                                    # status_text.text("Huấn luyện: 0%")
+                                    status_text.markdown(" **Huấn luyện**: 0%")
+                                def on_epoch_begin(self, epoch, logs={}):
+                                    self.epoch_start = time.time()
+
+                                def on_epoch_end(self, epoch, logs={}):
+                                    self.times.append(time.time() - self.epoch_start)
                                     progress = (epoch + 1) / epochs * 100
                                     progress_bar.progress(int(progress))
+                                    # status_text.text(f" **Đang huấn luyện**: {int(progress)}%")  # Cập nhật trạng thái %
+                                    status_text.markdown(f" **Đang huấn luyện**: {int(progress)}%")
+                                def on_train_end(self, logs={}):
+                                    status_text.markdown(" **Huấn luyện**: 100% (Hoàn thành)")
+                            time_callback = TimeHistory()
 
                             # Huấn luyện mô hình
                             history = model.fit(X_train, y_train,
@@ -335,77 +494,61 @@ def run_NeuralNetwork_app():
                                             batch_size=batch_size,
                                             validation_data=(X_val, y_val),
                                             verbose=1,
-                                            callbacks=[ProgressCallback()])
+                                            callbacks=[time_callback])
 
-                            # Hoàn thành progress bar
+                            # Thời gian tổng
+                            total_time = time.time() - start_time
                             progress_bar.progress(100)
-
-                            # Ghi log với MLflow
-                            mlflow.log_param("epochs", epochs)
-                            mlflow.log_param("batch_size", batch_size)
-                            mlflow.log_param("optimizer", optimizer)
-                            mlflow.log_param("num_classes", num_classes)
-                            mlflow.log_param("input_shape", input_shape)
-                            mlflow.log_metric("train_accuracy", history.history['accuracy'][-1])
-                            mlflow.log_metric("val_accuracy", history.history['val_accuracy'][-1])
-                            mlflow.log_metric("final_train_loss", history.history['loss'][-1])
-                            mlflow.log_metric("final_val_loss", history.history['val_loss'][-1])
 
                             # Đánh giá trên tập test
                             test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
-                            mlflow.log_metric("test_accuracy", test_accuracy)
-                            st.session_state['trained_model'] = model
-                            st.session_state['history'] = history
+                            train_loss, train_accuracy = model.evaluate(X_train, y_train, verbose=0)
+                            val_loss, val_accuracy = model.evaluate(X_val, y_val, verbose=0)
+
+                            # Tổng số tham số
+                            total_params = model.count_params()
+
                             # Hiển thị kết quả
                             st.success("✅ Huấn luyện hoàn tất!")
-                            st.write(f"#### ✅ **Kết quả huấn luyện**")
-                            st.write(f"📈 **Độ chính xác trên tập test**: {test_accuracy:.4f}")
-                            st.write("📊 **Trọng số và Bias đã tối ưu hóa:**")
-                            for layer in model.layers:
-                                if isinstance(layer, layers.Dense):
-                                    weights = layer.get_weights()[0]
-                                    biases = layer.get_weights()[1]
-                                    st.write(f"Layer {layer.name}:")
-                                    st.write(f"  - Trọng số shape: {weights.shape}")
-                                    st.write(f"  - Bias shape: {biases.shape}")
-                            # Giải thích về trọng số và bias đã tối ưu hóa
-                            st.markdown("""
-                            **Giải thích:**
-                            - **Trọng số (Weights):** Là các giá trị được điều chỉnh trong quá trình huấn luyện để mô hình học cách ánh xạ từ đầu vào (ảnh 28x28 pixel) đến đầu ra (chữ số 0-9). Shape của trọng số thể hiện kích thước của ma trận kết nối giữa các lớp (ví dụ: (784, 512) là kết nối từ 784 đầu vào đến 512 nơ-ron).
-                            - **Bias:** Là các giá trị bù đắp cho mỗi nơ-ron, giúp mô hình linh hoạt hơn trong việc điều chỉnh đầu ra. Shape của bias tương ứng với số nơ-ron trong mỗi lớp (ví dụ: (512,) cho 512 nơ-ron).
-                            - Các giá trị này được tối ưu hóa thông qua thuật toán lan truyền ngược (backpropagation) để giảm thiểu hàm mất mát.
-                            """)
-                            st.markdown("---")
-                            st.markdown("#### ✅**Biểu đồ Accuracy và Loss**")
-                            # Vẽ biểu đồ (xóa các giá trị số)
-                            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
-                            
-                            # Biểu đồ Loss
-                            ax1.plot(history.history['loss'], label='Train Loss', color='blue')
-                            ax1.plot(history.history['val_loss'], label='Val Loss', color='orange')
-                            ax1.set_title('Loss')
-                            ax1.set_xlabel('Epoch')
-                            ax1.set_ylabel('Loss')
-                            ax1.legend()
-                            # Xóa các giá trị số trên biểu đồ Loss
-                            # for i, (train_loss, val_loss) in enumerate(zip(history.history['loss'], history.history['val_loss'])):
-                            #     ax1.text(i, train_loss, f'{train_loss:.3f}', ha='center', va='bottom')
-                            #     ax1.text(i, val_loss, f'{val_loss:.3f}', ha='center', va='top')
+                            st.write("#### ✅ **Thông tin mô hình và kết quả huấn luyện**")
 
-                            
-                            # Biểu đồ Accuracy
-                            ax2.plot(history.history['accuracy'], label='Train Accuracy', color='blue')
-                            ax2.plot(history.history['val_accuracy'], label='Val Accuracy', color='orange')
-                            ax2.set_title('Accuracy')
-                            ax2.set_xlabel('Epoch')
-                            ax2.set_ylabel('Accuracy')
-                            ax2.legend()
-                            # Xóa các giá trị số trên biểu đồ Accuracy
-                            # for i, (train_acc, val_acc) in enumerate(zip(history.history['accuracy'], history.history['val_accuracy'])):
-                            #     ax2.text(i, train_acc, f'{train_acc:.3f}', ha='center', va='bottom')
-                            #     ax2.text(i, val_acc, f'{val_acc:.3f}', ha='center', va='top')
+                            # Kiến trúc mô hình
+                            st.write("**1. Kiến trúc mô hình:**")
+                            st.write(f" - Số lớp ẩn: {num_hidden_layers}")
+                            st.write(f" - Số nơ-ron: {hidden_layer_neurons}")
+                            st.write(f" - Hàm kích hoạt: {activation_function}")
 
-                            # Giải thích biểu đồ Accuracy
+                            # Số lượng tham số
+                            st.write(f"**2. Số lượng tham số:** {total_params:,}")
+
+                            # Thông tin huấn luyện
+                            st.write("**3. Thông tin huấn luyện:**")
+                            st.write(f"- Số epoch: {epochs}")
+                            st.write(f"- Batch size: {batch_size}")
+                            st.write(f"- Learning rate: {learning_rate}")
+                            st.write(f"- Bộ tối ưu: {optimizer_choice}")
+
+                            # Loss và Accuracy
+                            st.write("**4. Kết quả Loss & Accuracy:**")
+                            st.write(f"- **Validation Accuracy**: {val_accuracy:.4f}")
+                            st.write(f"- **Test Accuracy**: {test_accuracy:.4f}")
+
+                            # Thời gian huấn luyện
+                            st.write("**5. Thời gian huấn luyện:**")
+                            st.write(f"- Tổng thời gian: {total_time:.2f} giây")
+                            st.write(f"- Thời gian trung bình mỗi epoch: {np.mean(time_callback.times):.2f} giây")
+                            
+                            
+                            st.write("**6. Biểu đồ Kết quả Huấn luyện:**")
+                            # Tạo biểu đồ Loss
+                            fig, ax = plt.subplots(figsize=(8, 4))
+                            ax.plot(history.history['loss'], label='Training Loss', marker='o', linestyle='-')
+                            ax.plot(history.history['val_loss'], label='Validation Loss', marker='s', linestyle='--')
+                            ax.set_xlabel("Epochs")
+                            ax.set_ylabel("Loss")
+                            ax.set_title("Training & Validation Loss")
+                            ax.legend()
+                            ax.grid(True)
                             st.pyplot(fig)
                             st.markdown("""
                             **Giải thích biểu đồ Loss:**
@@ -413,6 +556,17 @@ def run_NeuralNetwork_app():
                             - **Val Loss (Mất mát validation):** Đo lường sai số trên tập validation, giúp đánh giá khả năng tổng quát hóa. Nếu Val Loss ổn định hoặc giảm chậm, mô hình không bị overfitting.
                             - Hai đường này nên có xu hướng tương tự; nếu Val Loss tăng trong khi Train Loss giảm, đó là dấu hiệu của overfitting.
                             """)
+                            st.markdown("---")
+                            # Tạo biểu đồ Accuracy
+                            fig, ax = plt.subplots(figsize=(8, 4))
+                            ax.plot(history.history['accuracy'], label='Training Accuracy', marker='o', linestyle='-')
+                            ax.plot(history.history['val_accuracy'], label='Validation Accuracy', marker='s', linestyle='--')
+                            ax.set_xlabel("Epochs")
+                            ax.set_ylabel("Accuracy")
+                            ax.set_title("Training & Validation Accuracy")
+                            ax.legend()
+                            ax.grid(True)
+                            st.pyplot(fig)
                             st.markdown("""
                             **Giải thích biểu đồ Accuracy:**
                             - **Train Accuracy (Độ chính xác huấn luyện):** Tỷ lệ dự đoán đúng trên tập huấn luyện, thường tăng qua các epoch khi mô hình học.
@@ -420,38 +574,96 @@ def run_NeuralNetwork_app():
                             - Sự khác biệt giữa Train Accuracy và Val Accuracy không quá lớn là dấu hiệu của một mô hình cân bằng.
                             """)
 
-                            # st.pyplot(fig)
+                            # Ghi log với MLflow
+                            mlflow.log_param("epochs", epochs)
+                            mlflow.log_param("batch_size", batch_size)
+                            mlflow.log_param("optimizer", optimizer_choice)
+                            mlflow.log_param("learning_rate", learning_rate)
+                            mlflow.log_param("activation_function", activation_function)
+                            mlflow.log_param("num_hidden_layers", num_hidden_layers)
+                            mlflow.log_param("hidden_layer_neurons", hidden_layer_neurons)
+                            mlflow.log_param("num_classes", num_classes)
+                            mlflow.log_param("input_shape", input_shape)
+                            mlflow.log_param("total_params", total_params)
+                            mlflow.log_metric("train_accuracy", train_accuracy)
+                            mlflow.log_metric("val_accuracy", val_accuracy)
+                            mlflow.log_metric("test_accuracy", test_accuracy)
+                            mlflow.log_metric("train_loss", train_loss)
+                            mlflow.log_metric("val_loss", val_loss)
+                            mlflow.log_metric("test_loss", test_loss)
+                            mlflow.log_metric("total_training_time", total_time)
+
+                            st.session_state['trained_model'] = model
+                            st.session_state['history'] = history
+
             else:
                 st.error("🚨 Vui lòng phân chia dữ liệu ở tab 'Phân chia dữ liệu' trước khi huấn luyện mô hình.")
-    # Tab dự đoán
+
+
+                
     with tab_demo:
         st.header("Dự đoán số viết tay")
-        st.write("Tải lên một hình ảnh số viết tay (28x28 pixel, grayscale) hoặc vẽ trực tiếp để dự đoán.")
+        st.write("Chọn cách nhập liệu: tải lên hình ảnh hoặc vẽ trực tiếp.")
 
-        # Kiểm tra xem mô hình đã được huấn luyện chưa
         if 'trained_model' not in st.session_state:
             st.warning("⚠️ Vui lòng huấn luyện mô hình trước trong tab 'Huấn luyện'!")
         else:
             model = st.session_state['trained_model']
 
-            # Tùy chọn tải lên hình ảnh
-            uploaded_file = st.file_uploader("Tải lên hình ảnh", type=["png", "jpg", "jpeg"])
-            if uploaded_file is not None:
-                # Đọc và xử lý hình ảnh
-                image = Image.open(uploaded_file).convert('L')  # Chuyển thành grayscale
-                image = image.resize((28, 28))  # Đảm bảo kích thước 28x28
-                image_array = np.array(image) / 255.0  # Chuẩn hóa giống dữ liệu huấn luyện
-                image_array = image_array.reshape(1, 784)  # Reshape thành (1, 784)
+            input_method = st.selectbox("Chọn phương thức nhập liệu", ["Vẽ trực tiếp", "Tải ảnh lên"])
 
-                # Dự đoán
-                prediction = model.predict(image_array)
-                predicted_class = np.argmax(prediction[0])
-                confidence = prediction[0][predicted_class]
+            if input_method == "Vẽ trực tiếp":
+                canvas_result = st_canvas(
+                    fill_color="rgba(255, 165, 0, 0.3)",
+                    stroke_width=20,
+                    stroke_color="#FFFFFF",
+                    background_color="#000000",
+                    height=280,
+                    width=280,
+                    drawing_mode="freedraw",
+                    key="canvas"
+                )
 
-                # Hiển thị hình ảnh và kết quả
-                st.image(image, caption="Hình ảnh đầu vào", width=100)
-                st.write(f"**Dự đoán:** {predicted_class} (Xác suất: {confidence:.4f})")
+                # Chỉ dự đoán khi người dùng nhấn nút
+                if canvas_result.image_data is not None:
+                    image = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
+                    image = image.convert('L')
+                    image = image.resize((28, 28))
+                    st.image(image, caption="Hình ảnh bạn vẽ (resize 28x28)", width=100)
 
+                    if st.button("Dự đoán", key="predict_button"):
+                        image_array = np.array(image, dtype=np.float32) / 255.0
+                        image_array = image_array.reshape(1, 784)
+
+                        image_tensor = tf.convert_to_tensor(image_array, dtype=tf.float32)
+                        prediction = model.predict(image_tensor, verbose=0)
+                        predicted_class = np.argmax(prediction[0])
+                        confidence = prediction[0][predicted_class]
+
+                        st.write(f"**Dự đoán:** {predicted_class}")
+                        st.write(f"**Xác suất:** {confidence:.4f}")
+
+                    if st.button("Xóa và vẽ lại", key="clear_button"):
+                        st.session_state.pop("canvas")
+                        st.rerun()
+
+            elif input_method == "Tải ảnh lên":
+                uploaded_file = st.file_uploader("Tải lên hình ảnh", type=["png", "jpg", "jpeg"])
+                if uploaded_file is not None:
+                    image = Image.open(uploaded_file).convert('L')
+                    image = image.resize((28, 28))
+                    st.image(image, caption="Hình ảnh đầu vào", width=100)
+
+                    if st.button("Dự đoán", key="predict_upload_button"):
+                        image_array = np.array(image, dtype=np.float32) / 255.0
+                        image_array = image_array.reshape(1, 784)
+
+                        image_tensor = tf.convert_to_tensor(image_array, dtype=tf.float32)
+                        prediction = model.predict(image_tensor, verbose=0)
+                        predicted_class = np.argmax(prediction[0])
+                        confidence = prediction[0][predicted_class]
+
+                        st.write(f"**Dự đoán:** {predicted_class} (Xác suất: {confidence:.4f})")
 
 
     with tab_mlflow:
@@ -497,8 +709,8 @@ def run_NeuralNetwork_app():
             st.subheader("Danh sách Run")
             if runs:
                 selected_run_id_to_delete = st.selectbox("", 
-                                                    options=list(run_options.keys()), 
-                                                    format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 if st.button("Xóa Run", key="delete_run"):
                     client.delete_run(selected_run_id_to_delete)
                     st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
@@ -518,23 +730,31 @@ def run_NeuralNetwork_app():
                 st.write(f"**Run ID:** {selected_run_id}")
                 st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
 
+                # Hiển thị các tham số đã log
                 st.markdown("### Tham số đã log")
                 st.json({
                     "epochs": selected_run.data.params.get("epochs", "N/A"),
                     "batch_size": selected_run.data.params.get("batch_size", "N/A"),
                     "optimizer": selected_run.data.params.get("optimizer", "N/A"),
+                    "learning_rate": selected_run.data.params.get("learning_rate", "N/A"),
+                    "activation_function": selected_run.data.params.get("activation_function", "N/A"),
+                    "num_hidden_layers": selected_run.data.params.get("num_hidden_layers", "N/A"),
+                    "hidden_layer_neurons": selected_run.data.params.get("hidden_layer_neurons", "N/A"),
                     "num_classes": selected_run.data.params.get("num_classes", "N/A"),
-                    "input_shape": selected_run.data.params.get("input_shape", "N/A")
+                    "input_shape": selected_run.data.params.get("input_shape", "N/A"),
+                    "total_params": selected_run.data.params.get("total_params", "N/A")
                 })
 
+                # Hiển thị các chỉ số đã log
                 st.markdown("### Chỉ số đã log")
                 metrics = {
                     "Train Accuracy": selected_run.data.metrics.get("train_accuracy", "N/A"),
                     "Validation Accuracy": selected_run.data.metrics.get("val_accuracy", "N/A"),
                     "Test Accuracy": selected_run.data.metrics.get("test_accuracy", "N/A"),
+                    "Train Loss": selected_run.data.metrics.get("train_loss", "N/A"),
+                    "Validation Loss": selected_run.data.metrics.get("val_loss", "N/A"),
                     "Test Loss": selected_run.data.metrics.get("test_loss", "N/A"),
-                    "Final Train Loss": selected_run.data.metrics.get("final_train_loss", "N/A"),
-                    "Final Validation Loss": selected_run.data.metrics.get("final_val_loss", "N/A")
+                    "Total Training Time (s)": selected_run.data.metrics.get("total_training_time", "N/A")
                 }
                 st.json(metrics)
 
