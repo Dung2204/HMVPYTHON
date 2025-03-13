@@ -678,7 +678,7 @@ def run_NeuralNetwork_app():
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
             client = MlflowClient()
-            experiment_name = "LinearRegression"
+            experiment_name = "NeuralNetworkExperiment"
     
             # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
