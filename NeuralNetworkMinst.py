@@ -57,9 +57,8 @@ def run_NeuralNetwork_app():
     os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
     os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
     
-    
+    # Thiết lập MLflow (Đặt sau khi mlflow_tracking_uri đã có giá trị)
     mlflow.set_tracking_uri(mlflow_tracking_uri)
-    # Định nghĩa đường dẫn đến các file MNIST
     
     dataset_path = os.path.dirname(os.path.abspath(__file__))
     train_images_path = os.path.join(dataset_path, "train-images.idx3-ubyte")
