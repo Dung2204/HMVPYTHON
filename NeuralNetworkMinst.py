@@ -352,7 +352,9 @@ def run_NeuralNetwork_app():
 
     with tab_preprocess:
         with st.expander("**Huấn luyện mô hình Neural Network**", expanded=True):
-            if "X_train" in st.session_state:
+            if "X_train" not in st.session_state:
+                st.error("🚨 Vui lòng phân chia dữ liệu ở tab 'Phân chia dữ liệu' trước khi huấn luyện mô hình.")
+            else:
                 # Lấy dữ liệu từ session_state
                 X_train = st.session_state.X_train
                 X_val = st.session_state.X_val
@@ -373,7 +375,6 @@ def run_NeuralNetwork_app():
                 # Cấu hình huấn luyện
                 st.markdown("### Cấu hình huấn luyện")
 
-                # Lựa chọn số lượng lớp ẩn
                 num_hidden_layers = st.slider(
                     "🔹 Số lượng lớp ẩn",
                     min_value=1,
@@ -384,7 +385,6 @@ def run_NeuralNetwork_app():
                 )
                 st.write(f"**Số lớp ẩn được chọn:** {num_hidden_layers}")
 
-                # Lựa chọn số nơ-ron cho mỗi lớp ẩn
                 hidden_layer_neurons = []
                 for i in range(num_hidden_layers):
                     neurons = st.number_input(
@@ -398,7 +398,6 @@ def run_NeuralNetwork_app():
                     hidden_layer_neurons.append(neurons)
                 st.write(f"**Số nơ-ron cho các lớp ẩn:** {hidden_layer_neurons}")
 
-                # Lựa chọn hàm kích hoạt
                 activation_function = st.selectbox(
                     "🔹 Hàm kích hoạt cho các lớp ẩn",
                     options=['relu', 'sigmoid', 'tanh'],
@@ -406,33 +405,14 @@ def run_NeuralNetwork_app():
                     key="activation_function"
                 )
 
-                # Xây dựng mô hình động dựa trên số lớp và nơ-ron
-                model = models.Sequential()
-                model.add(layers.Input(shape=(input_shape,)))
-
-                # Thêm các lớp ẩn động
-                for neurons in hidden_layer_neurons:
-                    model.add(layers.Dense(neurons, activation=activation_function))
-                    model.add(layers.Dropout(0.2))
-
-                # Thêm lớp đầu ra
-                model.add(layers.Dense(num_classes, activation='softmax'))
-
-                # Số epoch
                 epochs = st.slider("🔹 Số epoch", min_value=5, max_value=50, value=10, step=5, key="epochs")
-
-                # Batch size
                 batch_size = st.selectbox("🔹 Batch size", options=[32, 64, 128, 256], index=0, key="batch_size")
-
-                # Bộ tối ưu
                 optimizer_choice = st.selectbox(
                     "🔹 Bộ tối ưu",
                     options=['adam', 'sgd', 'rmsprop', 'adagrad'],
                     index=0,
                     key="optimizer"
                 )
-
-                # Learning rate
                 learning_rate = st.slider(
                     "🔹 Learning Rate (Tốc độ học)",
                     min_value=0.0001,
@@ -444,51 +424,55 @@ def run_NeuralNetwork_app():
                 )
                 st.write(f"**Learning Rate được chọn:** {learning_rate}")
 
-                # Cấu hình optimizer với learning rate
-                if optimizer_choice == "adam":
-                    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-                elif optimizer_choice == "sgd":
-                    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
-                elif optimizer_choice == "rmsprop":
-                    optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
-                elif optimizer_choice == "adagrad":
-                    optimizer = tf.keras.optimizers.Adagrad(learning_rate=learning_rate)
+                # Khởi tạo trạng thái nếu chưa có
+                if 'training_completed' not in st.session_state:
+                    st.session_state['training_completed'] = False
 
-                # Biên dịch mô hình
-                model.compile(optimizer=optimizer,
-                            loss='sparse_categorical_crossentropy',
-                            metrics=['accuracy'])
-
-                # Nút để bắt đầu huấn luyện
+                # Chỉ huấn luyện khi nhấn nút
                 if st.button("🚀 Bắt đầu huấn luyện", key="train_button"):
                     with st.spinner("Đang huấn luyện mô hình..."):
+                        # Xây dựng mô hình
+                        model = models.Sequential()
+                        model.add(layers.Input(shape=(input_shape,)))
+                        for neurons in hidden_layer_neurons:
+                            model.add(layers.Dense(neurons, activation=activation_function))
+                            model.add(layers.Dropout(0.2))
+                        model.add(layers.Dense(num_classes, activation='softmax'))
+
+                        # Cấu hình optimizer
+                        if optimizer_choice == "adam":
+                            optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+                        elif optimizer_choice == "sgd":
+                            optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
+                        elif optimizer_choice == "rmsprop":
+                            optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+                        elif optimizer_choice == "adagrad":
+                            optimizer = tf.keras.optimizers.Adagrad(learning_rate=learning_rate)
+
+                        model.compile(optimizer=optimizer,
+                                    loss='sparse_categorical_crossentropy',
+                                    metrics=['accuracy'])
+
                         with mlflow.start_run():
-                            # Khởi tạo progress bar và trạng thái văn bản
                             progress_bar = st.progress(0)
-                            status_text = st.empty()  # Tạo một placeholder để cập nhật trạng thái %
+                            status_text = st.empty()
+                            start_time = time.time()
 
-                            start_time = time.time()  # Bắt đầu đo thời gian tổng
-
-                            # Callback để đo thời gian mỗi epoch và cập nhật trạng thái
                             class TimeHistory(tf.keras.callbacks.Callback):
                                 def on_train_begin(self, logs={}):
                                     self.times = []
-                                    # status_text.text("Huấn luyện: 0%")
                                     status_text.markdown(" **Huấn luyện**: 0%")
                                 def on_epoch_begin(self, epoch, logs={}):
                                     self.epoch_start = time.time()
-
                                 def on_epoch_end(self, epoch, logs={}):
                                     self.times.append(time.time() - self.epoch_start)
                                     progress = (epoch + 1) / epochs * 100
                                     progress_bar.progress(int(progress))
-                                    # status_text.text(f" **Đang huấn luyện**: {int(progress)}%")  # Cập nhật trạng thái %
                                     status_text.markdown(f" **Đang huấn luyện**: {int(progress)}%")
                                 def on_train_end(self, logs={}):
                                     status_text.markdown(" **Huấn luyện**: 100% (Hoàn thành)")
-                            time_callback = TimeHistory()
 
-                            # Huấn luyện mô hình
+                            time_callback = TimeHistory()
                             history = model.fit(X_train, y_train,
                                             epochs=epochs,
                                             batch_size=batch_size,
@@ -496,83 +480,27 @@ def run_NeuralNetwork_app():
                                             verbose=1,
                                             callbacks=[time_callback])
 
-                            # Thời gian tổng
                             total_time = time.time() - start_time
                             progress_bar.progress(100)
 
-                            # Đánh giá trên tập test
                             test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
                             train_loss, train_accuracy = model.evaluate(X_train, y_train, verbose=0)
                             val_loss, val_accuracy = model.evaluate(X_val, y_val, verbose=0)
-
-                            # Tổng số tham số
                             total_params = model.count_params()
 
-                            # Hiển thị kết quả
-                            st.success("✅ Huấn luyện hoàn tất!")
-                            st.write("#### ✅ **Thông tin mô hình và kết quả huấn luyện**")
-
-                            # Kiến trúc mô hình
-                            st.write("**1. Kiến trúc mô hình:**")
-                            st.write(f" - Số lớp ẩn: {num_hidden_layers}")
-                            st.write(f" - Số nơ-ron: {hidden_layer_neurons}")
-                            st.write(f" - Hàm kích hoạt: {activation_function}")
-
-                            # Số lượng tham số
-                            st.write(f"**2. Số lượng tham số:** {total_params:,}")
-
-                            # Thông tin huấn luyện
-                            st.write("**3. Thông tin huấn luyện:**")
-                            st.write(f"- Số epoch: {epochs}")
-                            st.write(f"- Batch size: {batch_size}")
-                            st.write(f"- Learning rate: {learning_rate}")
-                            st.write(f"- Bộ tối ưu: {optimizer_choice}")
-
-                            # Loss và Accuracy
-                            st.write("**4. Kết quả Loss & Accuracy:**")
-                            st.write(f"- **Validation Accuracy**: {val_accuracy:.4f}")
-                            st.write(f"- **Test Accuracy**: {test_accuracy:.4f}")
-
-                            # Thời gian huấn luyện
-                            st.write("**5. Thời gian huấn luyện:**")
-                            st.write(f"- Tổng thời gian: {total_time:.2f} giây")
-                            st.write(f"- Thời gian trung bình mỗi epoch: {np.mean(time_callback.times):.2f} giây")
-                            
-                            
-                            st.write("**6. Biểu đồ Kết quả Huấn luyện:**")
-                            # Tạo biểu đồ Loss
-                            fig, ax = plt.subplots(figsize=(8, 4))
-                            ax.plot(history.history['loss'], label='Training Loss', marker='o', linestyle='-')
-                            ax.plot(history.history['val_loss'], label='Validation Loss', marker='s', linestyle='--')
-                            ax.set_xlabel("Epochs")
-                            ax.set_ylabel("Loss")
-                            ax.set_title("Training & Validation Loss")
-                            ax.legend()
-                            ax.grid(True)
-                            st.pyplot(fig)
-                            st.markdown("""
-                            **Giải thích biểu đồ Loss:**
-                            - **Train Loss (Mất mát huấn luyện):** Đại diện cho sai số giữa dự đoán và nhãn thực tế trên tập huấn luyện. Giá trị giảm dần qua các epoch cho thấy mô hình đang học tốt hơn.
-                            - **Val Loss (Mất mát validation):** Đo lường sai số trên tập validation, giúp đánh giá khả năng tổng quát hóa. Nếu Val Loss ổn định hoặc giảm chậm, mô hình không bị overfitting.
-                            - Hai đường này nên có xu hướng tương tự; nếu Val Loss tăng trong khi Train Loss giảm, đó là dấu hiệu của overfitting.
-                            """)
-                            st.markdown("---")
-                            # Tạo biểu đồ Accuracy
-                            fig, ax = plt.subplots(figsize=(8, 4))
-                            ax.plot(history.history['accuracy'], label='Training Accuracy', marker='o', linestyle='-')
-                            ax.plot(history.history['val_accuracy'], label='Validation Accuracy', marker='s', linestyle='--')
-                            ax.set_xlabel("Epochs")
-                            ax.set_ylabel("Accuracy")
-                            ax.set_title("Training & Validation Accuracy")
-                            ax.legend()
-                            ax.grid(True)
-                            st.pyplot(fig)
-                            st.markdown("""
-                            **Giải thích biểu đồ Accuracy:**
-                            - **Train Accuracy (Độ chính xác huấn luyện):** Tỷ lệ dự đoán đúng trên tập huấn luyện, thường tăng qua các epoch khi mô hình học.
-                            - **Val Accuracy (Độ chính xác validation):** Tỷ lệ dự đoán đúng trên tập validation, phản ánh khả năng tổng quát hóa. Giá trị cao và ổn định cho thấy mô hình hoạt động tốt trên dữ liệu mới.
-                            - Sự khác biệt giữa Train Accuracy và Val Accuracy không quá lớn là dấu hiệu của một mô hình cân bằng.
-                            """)
+                            # Lưu tất cả vào session_state
+                            st.session_state['trained_model'] = model
+                            st.session_state['history'] = history
+                            st.session_state['test_accuracy'] = test_accuracy
+                            st.session_state['val_accuracy'] = val_accuracy
+                            st.session_state['train_accuracy'] = train_accuracy
+                            st.session_state['test_loss'] = test_loss
+                            st.session_state['val_loss'] = val_loss
+                            st.session_state['train_loss'] = train_loss
+                            st.session_state['total_time'] = total_time
+                            st.session_state['time_callback'] = time_callback
+                            st.session_state['training_completed'] = True
+                            st.session_state['total_params'] = total_params
 
                             # Ghi log với MLflow
                             mlflow.log_param("epochs", epochs)
@@ -593,11 +521,89 @@ def run_NeuralNetwork_app():
                             mlflow.log_metric("test_loss", test_loss)
                             mlflow.log_metric("total_training_time", total_time)
 
-                            st.session_state['trained_model'] = model
-                            st.session_state['history'] = history
+                # Hiển thị kết quả nếu huấn luyện đã hoàn tất
+                if st.session_state['training_completed']:
+                    model = st.session_state['trained_model']
+                    history = st.session_state['history']
+                    test_accuracy = st.session_state['test_accuracy']
+                    val_accuracy = st.session_state['val_accuracy']
+                    train_accuracy = st.session_state['train_accuracy']
+                    test_loss = st.session_state['test_loss']
+                    val_loss = st.session_state['val_loss']
+                    train_loss = st.session_state['train_loss']
+                    total_time = st.session_state['total_time']
+                    time_callback = st.session_state['time_callback']
+                    total_params = st.session_state['total_params']
 
-            else:
-                st.error("🚨 Vui lòng phân chia dữ liệu ở tab 'Phân chia dữ liệu' trước khi huấn luyện mô hình.")
+                    st.success("✅ Huấn luyện hoàn tất!")
+                    st.write("#### ✅ **Thông tin mô hình và kết quả huấn luyện**")
+
+                    # Kiến trúc mô hình
+                    st.write("**1. Kiến trúc mô hình:**")
+                    st.write(f" - Số lớp ẩn: {num_hidden_layers}")
+                    st.write(f" - Số nơ-ron: {hidden_layer_neurons}")
+                    st.write(f" - Hàm kích hoạt: {activation_function}")
+
+                    # Số lượng tham số
+                    st.write("**2. Số lượng tham số:**")
+                    st.write(f"- Tổng số tham số: {total_params:,}")
+
+                    # Thông tin huấn luyện
+                    st.write("**3. Thông tin huấn luyện:**")
+                    st.write(f"- Số epoch: {epochs}")
+                    st.write(f"- Batch size: {batch_size}")
+                    st.write(f"- Learning rate: {learning_rate}")
+                    st.write(f"- Bộ tối ưu: {optimizer_choice}")
+
+                    # Loss và Accuracy
+                    st.write("**4. Kết quả Loss & Accuracy:**")
+                    st.write(f"- **Validation Accuracy**: {val_accuracy:.4f}")
+                    st.write(f"- **Test Accuracy**: {test_accuracy:.4f}")
+                    
+
+                    # Thời gian huấn luyện
+                    st.write("**5. Thời gian huấn luyện:**")
+                    st.write(f"- Tổng thời gian: {total_time:.2f} giây")
+                    st.write(f"- Thời gian trung bình mỗi epoch: {np.mean(time_callback.times):.2f} giây")
+
+                    # Biểu đồ
+                    st.write("**6. Biểu đồ Kết quả Huấn luyện:**")
+                    # Biểu đồ Loss
+                    fig, ax = plt.subplots(figsize=(8, 4))
+                    ax.plot(history.history['loss'], label='Training Loss', marker='o', linestyle='-')
+                    ax.plot(history.history['val_loss'], label='Validation Loss', marker='s', linestyle='--')
+                    ax.set_xlabel("Epochs")
+                    ax.set_ylabel("Loss")
+                    ax.set_title("Training & Validation Loss")
+                    ax.legend()
+                    ax.grid(True)
+                    st.pyplot(fig)
+                    st.markdown("""
+                    **Giải thích biểu đồ Loss:**
+                    - **Train Loss (Mất mát huấn luyện):** Đại diện cho sai số giữa dự đoán và nhãn thực tế trên tập huấn luyện. Giá trị giảm dần qua các epoch cho thấy mô hình đang học tốt hơn.
+                    - **Val Loss (Mất mát validation):** Đo lường sai số trên tập validation, giúp đánh giá khả năng tổng quát hóa. Nếu Val Loss ổn định hoặc giảm chậm, mô hình không bị overfitting.
+                    - Hai đường này nên có xu hướng tương tự; nếu Val Loss tăng trong khi Train Loss giảm, đó là dấu hiệu của overfitting.
+                    """)
+                    st.markdown("---")
+
+                    # Biểu đồ Accuracy
+                    fig, ax = plt.subplots(figsize=(8, 4))
+                    ax.plot(history.history['accuracy'], label='Training Accuracy', marker='o', linestyle='-')
+                    ax.plot(history.history['val_accuracy'], label='Validation Accuracy', marker='s', linestyle='--')
+                    ax.set_xlabel("Epochs")
+                    ax.set_ylabel("Accuracy")
+                    ax.set_title("Training & Validation Accuracy")
+                    ax.legend()
+                    ax.grid(True)
+                    st.pyplot(fig)
+                    st.markdown("""
+                    **Giải thích biểu đồ Accuracy:**
+                    - **Train Accuracy (Độ chính xác huấn luyện):** Tỷ lệ dự đoán đúng trên tập huấn luyện, thường tăng qua các epoch khi mô hình học.
+                    - **Val Accuracy (Độ chính xác validation):** Tỷ lệ dự đoán đúng trên tập validation, phản ánh khả năng tổng quát hóa. Giá trị cao và ổn định cho thấy mô hình hoạt động tốt trên dữ liệu mới.
+                    - Sự khác biệt giữa Train Accuracy và Val Accuracy không quá lớn là dấu hiệu của một mô hình cân bằng.
+                    """)
+                else:
+                    st.info("Chưa có kết quả huấn luyện. Nhấn 'Bắt đầu huấn luyện' để bắt đầu.")
 
 
                 
