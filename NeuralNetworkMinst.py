@@ -676,8 +676,8 @@ def run_NeuralNetwork_app():
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
             client = MlflowClient()
-            experiment_name = "NeuralNetworkExperiment"  # Đổi tên experiment cho phù hợp với Neural Network
-
+            experiment_name = "NeuralNetworkExperiment"  # Tên experiment
+    
             # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
             if experiment is None:
@@ -686,22 +686,22 @@ def run_NeuralNetwork_app():
             else:
                 experiment_id = experiment.experiment_id
                 st.info(f"Đang sử dụng experiment ID: {experiment_id}")
-
+    
             mlflow.set_experiment(experiment_name)
-
+    
             # Truy vấn các run trong experiment
             runs = client.search_runs(experiment_ids=[experiment_id])
-
+    
             # 1) Chọn và đổi tên Run Name
             st.subheader("Đổi tên Run")
             if runs:
                 run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
-                            for run in runs}
+                               for run in runs}
                 selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
-                                                        options=list(run_options.keys()), 
-                                                        format_func=lambda x: run_options[x])
+                                                          options=list(run_options.keys()), 
+                                                          format_func=lambda x: run_options[x])
                 new_run_name = st.text_input("Nhập tên mới cho Run:", 
-                                            value=run_options[selected_run_id_for_rename].split(" - ")[0])
+                                             value=run_options[selected_run_id_for_rename].split(" - ")[0])
                 if st.button("Cập nhật tên Run"):
                     if new_run_name.strip():
                         client.set_tag(selected_run_id_for_rename, "mlflow.runName", new_run_name.strip())
@@ -710,68 +710,77 @@ def run_NeuralNetwork_app():
                         st.warning("Vui lòng nhập tên mới cho Run.")
             else:
                 st.info("Chưa có Run nào được log.")
-
+    
             # 2) Xóa Run
-            st.subheader("Danh sách Run")
+            st.subheader("Xóa Run")
             if runs:
-                selected_run_id_to_delete = st.selectbox("", 
-                                                        options=list(run_options.keys()), 
-                                                        format_func=lambda x: run_options[x])
+                selected_run_id_to_delete = st.selectbox("Chọn Run để xóa:", 
+                                                         options=list(run_options.keys()), 
+                                                         format_func=lambda x: run_options[x])
                 if st.button("Xóa Run", key="delete_run"):
                     client.delete_run(selected_run_id_to_delete)
                     st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
-                    st.experimental_rerun()  # Tự động làm mới giao diện
+                    st.rerun()  # Thay experimental_rerun bằng rerun cho phiên bản Streamlit mới
             else:
                 st.info("Chưa có Run nào để xóa.")
-
-            # 3) Danh sách các thí nghiệm
+    
+            # 3) Danh sách các thí nghiệm và thông tin chi tiết
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
-                                            options=list(run_options.keys()), 
-                                            format_func=lambda x: run_options[x])
-
+                                               options=list(run_options.keys()), 
+                                               format_func=lambda x: run_options[x])
+    
                 # 4) Hiển thị thông tin chi tiết của Run được chọn
                 selected_run = client.get_run(selected_run_id)
                 st.write(f"**Run ID:** {selected_run_id}")
                 st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
-
+                st.write(f"**Thời gian bắt đầu:** {selected_run.info.start_time}")
+                st.write(f"**Trạng thái:** {selected_run.info.status}")
+    
                 # Hiển thị các tham số đã log
                 st.markdown("### Tham số đã log")
-                st.json({
-                    "epochs": selected_run.data.params.get("epochs", "N/A"),
-                    "batch_size": selected_run.data.params.get("batch_size", "N/A"),
-                    "optimizer": selected_run.data.params.get("optimizer", "N/A"),
-                    "learning_rate": selected_run.data.params.get("learning_rate", "N/A"),
-                    "activation_function": selected_run.data.params.get("activation_function", "N/A"),
-                    "num_hidden_layers": selected_run.data.params.get("num_hidden_layers", "N/A"),
-                    "hidden_layer_neurons": selected_run.data.params.get("hidden_layer_neurons", "N/A"),
-                    "num_classes": selected_run.data.params.get("num_classes", "N/A"),
-                    "input_shape": selected_run.data.params.get("input_shape", "N/A"),
-                    "total_params": selected_run.data.params.get("total_params", "N/A")
-                })
-
+                params = {
+                    "Số epoch": selected_run.data.params.get("epochs", "N/A"),
+                    "Batch size": selected_run.data.params.get("batch_size", "N/A"),
+                    "Bộ tối ưu": selected_run.data.params.get("optimizer", "N/A"),
+                    "Learning Rate": selected_run.data.params.get("learning_rate", "N/A"),
+                    "Hàm kích hoạt": selected_run.data.params.get("activation_function", "N/A"),
+                    "Số lớp ẩn": selected_run.data.params.get("num_hidden_layers", "N/A"),
+                    "Số nơ-ron các lớp ẩn": selected_run.data.params.get("hidden_layer_neurons", "N/A"),
+                    "Số lớp đầu ra": selected_run.data.params.get("num_classes", "N/A"),
+                    "Kích thước đầu vào": selected_run.data.params.get("input_shape", "N/A"),
+                    "Tổng số tham số": selected_run.data.params.get("total_params", "N/A")
+                }
+                st.table(params)  # Sử dụng bảng để hiển thị tham số cho đẹp hơn
+    
                 # Hiển thị các chỉ số đã log
                 st.markdown("### Chỉ số đã log")
                 metrics = {
-                    "Train Accuracy": selected_run.data.metrics.get("train_accuracy", "N/A"),
-                    "Validation Accuracy": selected_run.data.metrics.get("val_accuracy", "N/A"),
-                    "Test Accuracy": selected_run.data.metrics.get("test_accuracy", "N/A"),
-                    "Train Loss": selected_run.data.metrics.get("train_loss", "N/A"),
-                    "Validation Loss": selected_run.data.metrics.get("val_loss", "N/A"),
-                    "Test Loss": selected_run.data.metrics.get("test_loss", "N/A"),
-                    "Total Training Time (s)": selected_run.data.metrics.get("total_training_time", "N/A")
+                    "Độ chính xác tập huấn luyện": f"{float(selected_run.data.metrics.get('train_accuracy', 0)):.4f}",
+                    "Độ chính xác tập validation": f"{float(selected_run.data.metrics.get('val_accuracy', 0)):.4f}",
+                    "Độ chính xác tập kiểm tra": f"{float(selected_run.data.metrics.get('test_accuracy', 0)):.4f}",
+                    "Mất mát tập huấn luyện": f"{float(selected_run.data.metrics.get('train_loss', 0)):.4f}",
+                    "Mất mát tập validation": f"{float(selected_run.data.metrics.get('val_loss', 0)):.4f}",
+                    "Mất mát tập kiểm tra": f"{float(selected_run.data.metrics.get('test_loss', 0)):.4f}",
+                    "Tổng thời gian huấn luyện (giây)": f"{float(selected_run.data.metrics.get('total_training_time', 0)):.2f}"
                 }
-                st.json(metrics)
-
+                st.table(metrics)  # Sử dụng bảng để hiển thị chỉ số
+    
                 # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
-                mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"  # Thay bằng URL MLflow của bạn nếu khác
+                mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"  # URL MLflow của bạn
                 if st.button("Mở MLflow UI"):
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
+    
+                # 6) (Tùy chọn) Thêm biểu đồ lịch sử huấn luyện nếu cần
+                st.markdown("### Biểu đồ lịch sử huấn luyện (nếu có)")
+                # Nếu bạn muốn log lịch sử loss/accuracy từng epoch, cần thêm vào phần huấn luyện trước
+                # Ví dụ: log history.history['loss'], history.history['val_loss'] trong tab_preprocess
+    
             else:
                 st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
-
+    
         except Exception as e:
             st.error(f"Không thể kết nối với MLflow: {e}")
 
