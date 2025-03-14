@@ -476,21 +476,19 @@ def run_ClassificationMinst_app():
                 X = np.concatenate((train_images, test_images), axis=0)  # Gộp toàn bộ dữ liệu
                 y = np.concatenate((train_labels, test_labels), axis=0)
                 X = X.reshape(X.shape[0], -1)  # Chuyển thành vector 1 chiều
-                with mlflow.start_run():
-
                     # Cho phép người dùng chọn tỷ lệ validation và test
-                    test_size = st.slider("🔹 Chọn % tỷ lệ tập test", min_value=10, max_value=50, value=20, step=5) / 100
-                    val_size = st.slider("🔹 Chọn % tỷ lệ tập validation (trong phần train)", min_value=10, max_value=50, value=20, step=5) / 100
+                test_size = st.slider("🔹 Chọn % tỷ lệ tập test", min_value=10, max_value=50, value=20, step=5) / 100
+                val_size = st.slider("🔹 Chọn % tỷ lệ tập validation (trong phần train)", min_value=10, max_value=50, value=20, step=5) / 100
 
-                    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-                    val_size_adjusted = val_size / (1 - test_size)  # Điều chỉnh tỷ lệ val cho phần còn lại
-                    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=val_size_adjusted, random_state=42)
+                X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+                val_size_adjusted = val_size / (1 - test_size)  # Điều chỉnh tỷ lệ val cho phần còn lại
+                X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=val_size_adjusted, random_state=42)
 
                     # Tính tỷ lệ thực tế của từng tập
-                    total_samples = X.shape[0]
-                    test_percent = (X_test.shape[0] / total_samples) * 100
-                    val_percent = (X_val.shape[0] / total_samples) * 100
-                    train_percent = (X_train.shape[0] / total_samples) * 100
+                total_samples = X.shape[0]
+                test_percent = (X_test.shape[0] / total_samples) * 100
+                val_percent = (X_val.shape[0] / total_samples) * 100
+                train_percent = (X_train.shape[0] / total_samples) * 100
                 st.write(f"📊 **Tỷ lệ phân chia**: Test={test_percent:.0f}%, Validation={val_percent:.0f}%, Train={train_percent:.0f}%")
                 st.write("✅ Dữ liệu đã được xử lý và chia tách.")
                 st.write(f"🔹 Kích thước tập huấn luyện: `{X_train.shape}`")
@@ -499,13 +497,11 @@ def run_ClassificationMinst_app():
             else:
                 st.error("🚨 Dữ liệu chưa được nạp. Hãy đảm bảo `train_images`, `train_labels` và `test_images` đã được tải trước khi chạy.")
 
-
-
-    # 3️⃣ HUẤN LUYỆN MÔ HÌNH
     with tab_preprocess:
         with st.expander("**Huấn luyện mô hình**", expanded=True):
             # Lựa chọn mô hình
             model_option = st.radio("🔹 Chọn mô hình huấn luyện:", ("Decision Tree", "SVM"))
+            
             if model_option == "Decision Tree":
                 st.subheader("🌳 Decision Tree Classifier")
                         
@@ -519,34 +515,41 @@ def run_ClassificationMinst_app():
                         # Khởi tạo mô hình Decision Tree
                         dt_model = DecisionTreeClassifier(max_depth=max_depth, random_state=42)
 
-                        # Thực hiện K-Fold Cross-Validation với số folds do người dùng chọn
+                        # Thực hiện K-Fold Cross-Validation
                         kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
                         cv_scores = []
-                        progress_bar = st.progress(0)  # Khởi tạo thanh trạng thái ở 0%
-                        progress_text = st.empty()  # Tạo một vùng trống để hiển thị % tiến trình
-                        total_folds = n_folds
+                        progress_bar = st.progress(0)  # Thanh trạng thái bắt đầu từ 0%
+                        progress_text = st.empty()    # Vùng hiển thị % tiến trình
+                        total_steps = n_folds * 100   # Tổng số bước (mỗi fold có 100 bước nhỏ)
 
+                        current_step = 0  # Biến đếm bước hiện tại
                         for i, (train_index, val_index) in enumerate(kf.split(X_train)):
                             X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
                             y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
 
-                            # Huấn luyện mô hình trên fold hiện tại
+                            # Huấn luyện trên fold hiện tại
                             dt_model.fit(X_train_fold, y_train_fold)
-                            # Dự đoán và tính độ chính xác trên tập validation của fold
                             y_val_pred_fold = dt_model.predict(X_val_fold)
                             fold_accuracy = accuracy_score(y_val_fold, y_val_pred_fold)
                             cv_scores.append(fold_accuracy)
 
-                            # Cập nhật thanh trạng thái và hiển thị phần trăm
-                            progress = (i + 1) / total_folds  # Tính phần trăm hoàn thành
-                            progress_bar.progress(progress)  # Cập nhật thanh trạng thái
-                            progress_text.text(f"Tiến trình huấn luyện: {int(progress * 100)}%")  # Hiển thị % cụ thể
+                            # Giả lập tiến trình mượt mà trong mỗi fold
+                            for sub_step in range(100):  # 100 bước nhỏ trong mỗi fold
+                                current_step += 1
+                                progress_percent = int((current_step / total_steps) * 100)  # Tính % hoàn thành
+                                progress_bar.progress(progress_percent / 100)              # Cập nhật thanh trạng thái
+                                progress_text.text(f"Tiến trình huấn luyện: {progress_percent}%")
+                                time.sleep(0.01)  # Delay nhỏ để tạo hiệu ứng mượt mà
+
+                        # Đảm bảo tiến trình đạt 100%
+                        progress_bar.progress(1.0)
+                        progress_text.text("Tiến trình huấn luyện: 100% - Đã hoàn thành!")
 
                         # Tính độ chính xác trung bình từ cross-validation
                         mean_cv_accuracy = np.mean(cv_scores)
-                        std_cv_accuracy = np.std(cv_scores)  # Độ lệch chuẩn để đánh giá độ ổn định
+                        std_cv_accuracy = np.std(cv_scores)
 
-                        # Huấn luyện mô hình trên toàn bộ X_train, y_train để sử dụng sau này
+                        # Huấn luyện mô hình trên toàn bộ X_train
                         dt_model.fit(X_train, y_train)
                         y_val_pred_dt = dt_model.predict(X_val)
                         accuracy_dt = accuracy_score(y_val, y_val_pred_dt)
@@ -574,8 +577,9 @@ def run_ClassificationMinst_app():
                         st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
                         st.write(f"✅ **Độ chính xác trung bình từ K-Fold Cross-Validation ({n_folds} folds):** `{mean_cv_accuracy:.4f} ± {std_cv_accuracy:.4f}`")
                         st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_dt:.4f}`")
-                        
+                    
                     mlflow.end_run()
+
             elif model_option == "SVM":
                 st.subheader("🌀 Support Vector Machine (SVM)")
                             
@@ -583,54 +587,50 @@ def run_ClassificationMinst_app():
                 kernel = st.selectbox("Chọn kernel:", ["linear", "poly", "rbf", "sigmoid"])
                 C = st.slider("Chọn giá trị C (điều chỉnh mức độ regularization):", min_value=0.1, max_value=10.0, value=1.0)
                 n_folds = st.slider("Chọn số folds cho K-Fold Cross-Validation:", min_value=2, max_value=10, value=5)
+
                 if st.button("🚀 Huấn luyện mô hình"):
                     with mlflow.start_run():
                         # Khởi tạo mô hình SVM
                         svm_model = SVC(kernel=kernel, C=C, random_state=42)
 
-                        # Thực hiện K-Fold Cross-Validation với số folds do người dùng chọn
+                        # Thực hiện K-Fold Cross-Validation
                         kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
                         cv_scores = []
-                        progress_bar = st.progress(0)  # Khởi tạo thanh trạng thái ở 0%
-                        progress_text = st.empty()  # Tạo một vùng trống để hiển thị % tiến trình
-                        total_folds = n_folds
+                        progress_bar = st.progress(0)  # Thanh trạng thái bắt đầu từ 0%
+                        progress_text = st.empty()    # Vùng hiển thị % tiến trình
+                        total_steps = n_folds * 100   # Tổng số bước (mỗi fold có 100 bước nhỏ)
 
+                        current_step = 0  # Biến đếm bước hiện tại
                         for i, (train_index, val_index) in enumerate(kf.split(X_train)):
                             X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
                             y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
 
-                            # Huấn luyện mô hình trên fold hiện tại
+                            # Huấn luyện trên fold hiện tại
                             svm_model.fit(X_train_fold, y_train_fold)
-                            # Dự đoán và tính độ chính xác trên tập validation của fold
                             y_val_pred_fold = svm_model.predict(X_val_fold)
                             fold_accuracy = accuracy_score(y_val_fold, y_val_pred_fold)
                             cv_scores.append(fold_accuracy)
 
-                            # Cập nhật thanh trạng thái và hiển thị phần trăm
-                            progress = (i + 1) / total_folds  # Tính phần trăm hoàn thành
-                            progress_bar.progress(progress)  # Cập nhật thanh trạng thái
-                            progress_text.text(f"Tiến trình huấn luyện: {int(progress * 100)}%")  # Hiển thị % cụ thể
-                            time.sleep(0.5)  # Thêm delay 0.5 giây để hiển thị rõ hơn
+                            # Giả lập tiến trình mượt mà trong mỗi fold
+                            for sub_step in range(100):  # 100 bước nhỏ trong mỗi fold
+                                current_step += 1
+                                progress_percent = int((current_step / total_steps) * 100)  # Tính % hoàn thành
+                                progress_bar.progress(progress_percent / 100)              # Cập nhật thanh trạng thái
+                                progress_text.text(f"Tiến trình huấn luyện: {progress_percent}%")
+                                time.sleep(0.01)  # Delay nhỏ để tạo hiệu ứng mượt mà
 
-                        # Kiểm tra dữ liệu trước khi tính toán
-                        if len(cv_scores) == 0:
-                            st.error("Lỗi: Không có dữ liệu từ Cross-Validation!")
-                            mlflow.end_run()
-                            return
+                        # Đảm bảo tiến trình đạt 100%
+                        progress_bar.progress(1.0)
+                        progress_text.text("Tiến trình huấn luyện: 100% - Đã hoàn thành!")
 
                         # Tính độ chính xác trung bình từ cross-validation
                         mean_cv_accuracy = np.mean(cv_scores)
-                        std_cv_accuracy = np.std(cv_scores)  # Độ lệch chuẩn để đánh giá độ ổn định
+                        std_cv_accuracy = np.std(cv_scores)
 
-                        # Kiểm tra và huấn luyện trên toàn bộ dữ liệu
-                        try:
-                            svm_model.fit(X_train, y_train)
-                            y_val_pred_svm = svm_model.predict(X_val)
-                            accuracy_svm = accuracy_score(y_val, y_val_pred_svm)
-                        except Exception as e:
-                            st.error(f"Lỗi khi huấn luyện hoặc dự đoán: {str(e)}")
-                            mlflow.end_run()
-                            return
+                        # Huấn luyện mô hình trên toàn bộ X_train
+                        svm_model.fit(X_train, y_train)
+                        y_val_pred_svm = svm_model.predict(X_val)
+                        accuracy_svm = accuracy_score(y_val, y_val_pred_svm)
 
                         # Ghi log vào MLflow
                         mlflow.log_param("model_type", "SVM")
@@ -650,19 +650,17 @@ def run_ClassificationMinst_app():
                         st.session_state["svm_C"] = C
                         st.session_state["n_folds"] = n_folds
 
-                        # Hiển thị kết quả
                         st.markdown("---") 
                         st.write(f"🔹Mô hình được chọn để đánh giá: `{model_option}`")
-                        kernel = st.session_state.get("svm_kernel", "linear")
-                        C = st.session_state.get("svm_C", 1.0)
                         st.write("🔹 **Tham số mô hình:**")
                         st.write(f"- Kernel: `{kernel}`")
                         st.write(f"- C (Regularization): `{C}`")
                         st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
                         st.write(f"✅ **Độ chính xác trung bình từ K-Fold Cross-Validation ({n_folds} folds):** `{mean_cv_accuracy:.4f} ± {std_cv_accuracy:.4f}`")
                         st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_svm:.4f}`")
-                        
+                    
                     mlflow.end_run()
+
                         
     with tab_demo:   
         with st.expander("**Dự đoán kết quả**", expanded=True):
@@ -744,73 +742,74 @@ def run_ClassificationMinst_app():
             # Truy vấn các run trong experiment
             runs = client.search_runs(experiment_ids=[experiment_id])
 
-            # 1) Chọn và đổi tên Run Name
-            st.subheader("Đổi tên Run")
             if runs:
+                # Lọc các run theo loại mô hình đã chọn
+                selected_model_type = st.session_state.get("selected_model_type", "Decision Tree")
                 run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
-                            for run in runs}
-                selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
-                                                        options=list(run_options.keys()), 
-                                                        format_func=lambda x: run_options[x])
-                new_run_name = st.text_input("Nhập tên mới cho Run:", 
-                                            value=run_options[selected_run_id_for_rename].split(" - ")[0])
-                if st.button("Cập nhật tên Run"):
-                    if new_run_name.strip():
-                        client.set_tag(selected_run_id_for_rename, "mlflow.runName", new_run_name.strip())
-                        st.success(f"Đã cập nhật tên Run thành: {new_run_name.strip()}")
-                    else:
-                        st.warning("Vui lòng nhập tên mới cho Run.")
-            else:
-                st.info("Chưa có Run nào được log.")
+                            for run in runs if run.data.params.get("model_type") == selected_model_type}
 
-            # 2) Xóa Run
-            st.subheader("Danh sách Run")
-            if runs:
-                selected_run_id_to_delete = st.selectbox("", 
-                                                        options=list(run_options.keys()), 
-                                                        format_func=lambda x: run_options[x])
-                if st.button("Xóa Run", key="delete_run"):
-                    client.delete_run(selected_run_id_to_delete)
-                    st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
-                    st.experimental_rerun()  # Tự động làm mới giao diện
-            else:
-                st.info("Chưa có Run nào để xóa.")
+                if not run_options:
+                    st.info(f"Chưa có Run nào cho mô hình {selected_model_type}.")
+                else:
+                    # Chọn Run để xem chi tiết
+                    st.subheader("Danh sách các Run đã log")
+                    selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
+                                                options=list(run_options.keys()), 
+                                                format_func=lambda x: run_options[x])
 
-            # 3) Danh sách các thí nghiệm
-            st.subheader("Danh sách các Run đã log")
-            if runs:
-                selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
-                                            options=list(run_options.keys()), 
-                                            format_func=lambda x: run_options[x])
+                    selected_run = client.get_run(selected_run_id)
+                    st.write(f"**Run ID:** {selected_run_id}")
+                    st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
 
-                # 4) Hiển thị thông tin chi tiết của Run được chọn
-                selected_run = client.get_run(selected_run_id)
-                st.write(f"**Run ID:** {selected_run_id}")
-                st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
+                    # Hiển thị tham số theo loại mô hình
+                    st.markdown("### Tham số đã log")
+                    if selected_model_type == "Decision Tree":
+                        params = {
+                            "model_type": selected_run.data.params.get("model_type", "N/A"),
+                            "max_depth": selected_run.data.params.get("max_depth", "N/A"),
+                            "n_folds": selected_run.data.params.get("n_folds", "N/A")
+                        }
+                    elif selected_model_type == "SVM":
+                        params = {
+                            "model_type": selected_run.data.params.get("model_type", "N/A"),
+                            "kernel": selected_run.data.params.get("kernel", "N/A"),
+                            "C_value": selected_run.data.params.get("C_value", "N/A"),
+                            "n_folds": selected_run.data.params.get("n_folds", "N/A")
+                        }
+                    st.json(params)
 
-                st.markdown("### Tham số đã log")
-                params = {
-                    "model_type": selected_run.data.params.get("model_type", "N/A"),
-                    "max_depth": selected_run.data.params.get("max_depth", "N/A"),  # Chỉ có trong Decision Tree
-                    "kernel": selected_run.data.params.get("kernel", "N/A"),        # Chỉ có trong SVM
-                    "C_value": selected_run.data.params.get("C_value", "N/A"),      # Chỉ có trong SVM
-                    "n_folds": selected_run.data.params.get("n_folds", "N/A")
-                }
-                st.json(params)
+                    # Hiển thị chỉ số
+                    st.markdown("### Chỉ số đã log")
+                    metrics = {
+                        "mean_cv_accuracy": selected_run.data.metrics.get("mean_cv_accuracy", "N/A"),
+                        "std_cv_accuracy": selected_run.data.metrics.get("std_cv_accuracy", "N/A"),
+                        "accuracy": selected_run.data.metrics.get("accuracy", "N/A")
+                    }
+                    st.json(metrics)
 
-                st.markdown("### Chỉ số đã log")
-                metrics = {
-                    "mean_cv_accuracy": selected_run.data.metrics.get("mean_cv_accuracy", "N/A"),
-                    "std_cv_accuracy": selected_run.data.metrics.get("std_cv_accuracy", "N/A"),
-                    "accuracy": selected_run.data.metrics.get("accuracy", "N/A")
-                }
-                st.json(metrics)
+                    # Đổi tên Run
+                    st.subheader("Đổi tên Run")
+                    new_run_name = st.text_input("Nhập tên mới cho Run:", 
+                                                value=run_options[selected_run_id].split(" - ")[0])
+                    if st.button("Cập nhật tên Run"):
+                        if new_run_name.strip():
+                            client.set_tag(selected_run_id, "mlflow.runName", new_run_name.strip())
+                            st.success(f"Đã cập nhật tên Run thành: {new_run_name.strip()}")
+                        else:
+                            st.warning("Vui lòng nhập tên mới cho Run.")
 
-                # 5) Nút bấm mở MLflow UI
-                st.subheader("Truy cập MLflow UI")
-                mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
-                if st.button("Mở MLflow UI"):
-                    st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
+                    # Xóa Run
+                    st.subheader("Xóa Run")
+                    if st.button("Xóa Run", key="delete_run"):
+                        client.delete_run(selected_run_id)
+                        st.success(f"Đã xóa Run {run_options[selected_run_id]} thành công!")
+                        st.experimental_rerun()
+
+                    # Nút mở MLflow UI
+                    st.subheader("Truy cập MLflow UI")
+                    mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
+                    if st.button("Mở MLflow UI"):
+                        st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
                 st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
 
