@@ -371,38 +371,37 @@ def run_LinearRegression_app():
                     st.error("Không tìm thấy cột mục tiêu 'Survived'.")
                 else:
                     st.write("**Nhập tỷ lệ chia tập dữ liệu:**")
-                    with mlflow.start_run():
-                        test_pct = st.slider("Chọn % tỷ lệ tập test", 0, 50, 15)
-                        valid_pct = st.slider("Chọn % tỷ lệ tập validation (trong phần train)", 0, 50, 15)
-                        train_pct = 100 - (test_pct + valid_pct)
-                        total = test_pct + valid_pct + train_pct
-                        st.markdown(f"""
+                    
+                    test_pct = st.slider("Chọn % tỷ lệ tập test", 0, 50, 15)
+                    valid_pct = st.slider("Chọn % tỷ lệ tập validation (trong phần train)", 0, 50, 15)
+                    train_pct = 100 - (test_pct + valid_pct)
+                    total = test_pct + valid_pct + train_pct
+                    st.markdown(f"""
                         Tỷ lệ phân chia bao gồm:
                         - **Train:** {train_pct}%  
                         - **Test:** {test_pct}%  
                         - **Validation:** {valid_pct}%  
-                        """)
-                        if total != 100:
-                            st.warning("Tổng các tỉ lệ phải bằng 100%! Vui lòng điều chỉnh lại các giá trị.")
-                        else:
-                            if train_pct < 30:
-                                st.warning("Tỉ lệ tập Train quá thấp (<30%).")
-                            if test_pct < 5:
-                                st.warning("Tỉ lệ tập Test quá thấp (<5%).")
-                            if valid_pct < 5:
-                                st.warning("Tỉ lệ tập Validation quá thấp (<5%).")
-                            X = df.drop(columns=["Survived"])
-                            y = df["Survived"]  
-                            X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_pct/100, random_state=42)
-                            valid_size = valid_pct / (valid_pct + train_pct) if (valid_pct + train_pct) > 0 else 0
-                            X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=valid_size, random_state=42)
-                            st.markdown(f"""
+                    """)
+                    if total != 100:
+                        st.warning("Tổng các tỉ lệ phải bằng 100%! Vui lòng điều chỉnh lại các giá trị.")
+                    else:
+                        if train_pct < 30:
+                            st.warning("Tỉ lệ tập Train quá thấp (<30%).")
+                        if test_pct < 5:
+                            st.warning("Tỉ lệ tập Test quá thấp (<5%).")
+                        if valid_pct < 5:
+                            st.warning("Tỉ lệ tập Validation quá thấp (<5%).")
+                        X = df.drop(columns=["Survived"])
+                        y = df["Survived"]  
+                        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_pct/100, random_state=42)
+                        valid_size = valid_pct / (valid_pct + train_pct) if (valid_pct + train_pct) > 0 else 0
+                        X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=valid_size, random_state=42)
+                        st.markdown(f"""
                             Số lượng mẫu sau khi chia:
                             - **Train:** {X_train.shape[0]} mẫu  
                             - **Validation:** {X_val.shape[0]} mẫu  
                             - **Test:** {X_test.shape[0]} mẫu  
-                            """)
-                    mlflow.end_run()
+                        """)
                     min_samples = 10
                     if X_train.shape[0] < min_samples:
                         st.warning("Số mẫu tập Train quá ít.")
