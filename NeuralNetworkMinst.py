@@ -56,8 +56,6 @@ def run_NeuralNetwork_app():
     os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
     os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
     os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
-    
-    # Thiết lập MLflow (Đặt sau khi mlflow_tracking_uri đã có giá trị)
     mlflow.set_tracking_uri(mlflow_tracking_uri)
     
     dataset_path = os.path.dirname(os.path.abspath(__file__))
@@ -172,6 +170,7 @@ def run_NeuralNetwork_app():
                     """
             )
             st.image("image1.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image1.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
 
             st.markdown("---")
             st.markdown("### Cấu trúc Neural Network")
@@ -198,6 +197,7 @@ def run_NeuralNetwork_app():
                 """
             )
             st.image("image2.png", caption="Cấu trúc Neural Network có 2 hoặc nhiều lớp ẩn (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image2.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
 
             st.markdown("---")
             st.markdown("### Các bước huấn luyện Neural Network")
@@ -220,6 +220,7 @@ def run_NeuralNetwork_app():
                 """
             )
             st.image("image3.png", caption="Biểu đồ hàm Sigmoid (Nguồn:https://byvn.net/qW4e)", use_container_width=True)
+            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image3.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
 
             # Hàm Tanh
             st.markdown("**2. Hàm Hyperbolic Tangent (Tanh):**")
@@ -233,6 +234,7 @@ def run_NeuralNetwork_app():
                 """
             )
             st.image("image4.png", caption="Biểu đồ hàm Hyperbolic Tangent (Tanh) (Nguồn:https://byvn.net/qW4e)", use_container_width=True)
+            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image4.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
 
             # Hàm ReLU
             st.markdown("**3. Hàm ReLU (Rectified Linear Unit):**")
@@ -245,6 +247,7 @@ def run_NeuralNetwork_app():
                 """
             )
             st.image("image5.png", caption="Biểu đồ hàm ReLU (Rectified Linear Unit)(Nguồn:https://byvn.net/qW4e)", use_container_width=True)
+            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image5.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
 
             # Hàm Softmax
             st.markdown("**5. Hàm Softmax:**")
@@ -259,6 +262,7 @@ def run_NeuralNetwork_app():
                 """
             )
             st.image("image6.png", caption="Biểu đồ hàm Softmax (Rectified Linear Unit)(Nguồn:https://byvn.net/yvvj)", use_container_width=True)
+            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image6.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
 
             st.markdown("---")
             st.markdown("### Công thức toán học")
@@ -320,31 +324,30 @@ def run_NeuralNetwork_app():
                 y = np.concatenate((train_labels, test_labels), axis=0)
                 X = X.reshape(X.shape[0], -1)
 
-                with mlflow.start_run():
-                    test_size = st.slider("🔹 Chọn % tỷ lệ tập test", min_value=10, max_value=50, value=20, step=5, key="test_size") / 100
-                    val_size = st.slider("🔹 Chọn % tỷ lệ tập validation (trong phần train)", min_value=10, max_value=50, value=20, step=5, key="val_size") / 100
+                test_size = st.slider("🔹 Chọn % tỷ lệ tập test", min_value=10, max_value=50, value=20, step=5, key="test_size") / 100
+                val_size = st.slider("🔹 Chọn % tỷ lệ tập validation (trong phần train)", min_value=10, max_value=50, value=20, step=5, key="val_size") / 100
 
-                    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-                    val_size_adjusted = val_size / (1 - test_size)
-                    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=val_size_adjusted, random_state=42)
+                X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+                val_size_adjusted = val_size / (1 - test_size)
+                X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=val_size_adjusted, random_state=42)
 
-                    st.session_state.X_train = X_train
-                    st.session_state.X_val = X_val
-                    st.session_state.X_test = X_test
-                    st.session_state.y_train = y_train
-                    st.session_state.y_val = y_val
-                    st.session_state.y_test = y_test
+                st.session_state.X_train = X_train
+                st.session_state.X_val = X_val
+                st.session_state.X_test = X_test
+                st.session_state.y_train = y_train
+                st.session_state.y_val = y_val
+                st.session_state.y_test = y_test
 
-                    total_samples = X.shape[0]
-                    test_percent = (X_test.shape[0] / total_samples) * 100
-                    val_percent = (X_val.shape[0] / total_samples) * 100
-                    train_percent = (X_train.shape[0] / total_samples) * 100
+                total_samples = X.shape[0]
+                test_percent = (X_test.shape[0] / total_samples) * 100
+                val_percent = (X_val.shape[0] / total_samples) * 100
+                train_percent = (X_train.shape[0] / total_samples) * 100
 
-                    st.write(f"📊 **Tỷ lệ phân chia**: Test={test_percent:.0f}%, Validation={val_percent:.0f}%, Train={train_percent:.0f}%")
-                    st.write("✅ Dữ liệu đã được xử lý và chia tách.")
-                    st.write(f"🔹 Kích thước tập huấn luyện: `{X_train.shape}`")
-                    st.write(f"🔹 Kích thước tập validation: `{X_val.shape}`")
-                    st.write(f"🔹 Kích thước tập kiểm tra: `{X_test.shape}`")
+                st.write(f"📊 **Tỷ lệ phân chia**: Test={test_percent:.0f}%, Validation={val_percent:.0f}%, Train={train_percent:.0f}%")
+                st.write("✅ Dữ liệu đã được xử lý và chia tách.")
+                st.write(f"🔹 Kích thước tập huấn luyện: `{X_train.shape}`")
+                st.write(f"🔹 Kích thước tập validation: `{X_val.shape}`")
+                st.write(f"🔹 Kích thước tập kiểm tra: `{X_test.shape}`")
             else:
                 st.error("🚨 Dữ liệu chưa được nạp. Hãy đảm bảo `train_images`, `train_labels` và `test_images` đã được tải trước khi chạy.")
 
@@ -679,7 +682,7 @@ def run_NeuralNetwork_app():
         try:
             client = MlflowClient()
             experiment_name = "NeuralNetworkExperiment"
-    
+
             # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
             if experiment is None:
@@ -688,22 +691,22 @@ def run_NeuralNetwork_app():
             else:
                 experiment_id = experiment.experiment_id
                 st.info(f"Đang sử dụng experiment ID: {experiment_id}")
-    
+
             mlflow.set_experiment(experiment_name)
-    
+
             # Truy vấn các run trong experiment
             runs = client.search_runs(experiment_ids=[experiment_id])
-    
+
             # 1) Chọn và đổi tên Run Name
             st.subheader("Đổi tên Run")
             if runs:
                 run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
-                               for run in runs}
+                            for run in runs}
                 selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
-                                                          options=list(run_options.keys()), 
-                                                          format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 new_run_name = st.text_input("Nhập tên mới cho Run:", 
-                                             value=run_options[selected_run_id_for_rename].split(" - ")[0])
+                                            value=run_options[selected_run_id_for_rename].split(" - ")[0])
                 if st.button("Cập nhật tên Run"):
                     if new_run_name.strip():
                         client.set_tag(selected_run_id_for_rename, "mlflow.runName", new_run_name.strip())
@@ -712,35 +715,49 @@ def run_NeuralNetwork_app():
                         st.warning("Vui lòng nhập tên mới cho Run.")
             else:
                 st.info("Chưa có Run nào được log.")
-    
+
             # 2) Xóa Run
             st.subheader("Danh sách Run")
             if runs:
                 selected_run_id_to_delete = st.selectbox("", 
-                                                         options=list(run_options.keys()), 
-                                                         format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 if st.button("Xóa Run", key="delete_run"):
                     client.delete_run(selected_run_id_to_delete)
                     st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
-                    st.experimental_rerun()  # Tự động làm mới giao diện
+                    st.experimental_rerun()
             else:
                 st.info("Chưa có Run nào để xóa.")
-    
+
             # 3) Danh sách các thí nghiệm
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
-                                               options=list(run_options.keys()), 
-                                               format_func=lambda x: run_options[x])
-    
+                                            options=list(run_options.keys()), 
+                                            format_func=lambda x: run_options[x])
+
                 # 4) Hiển thị thông tin chi tiết của Run được chọn
                 selected_run = client.get_run(selected_run_id)
                 st.write(f"**Run ID:** {selected_run_id}")
                 st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
-    
+
+                # Hiển thị các tham số đã log
                 st.markdown("### Tham số đã log")
-                st.json(selected_run.data.params)
-    
+                st.json({
+                    "epochs": selected_run.data.params.get("epochs", "N/A"),
+                    "batch_size": selected_run.data.params.get("batch_size", "N/A"),
+                    "optimizer": selected_run.data.params.get("optimizer", "N/A"),
+                    "learning_rate": selected_run.data.params.get("learning_rate", "N/A"),
+                    "activation_function": selected_run.data.params.get("activation_function", "N/A"),
+                    "num_hidden_layers": selected_run.data.params.get("num_hidden_layers", "N/A"),
+                    "hidden_layer_neurons": selected_run.data.params.get("hidden_layer_neurons", "N/A"),
+                    "num_classes": selected_run.data.params.get("num_classes", "N/A"),
+                    "input_shape": selected_run.data.params.get("input_shape", "N/A"),
+                    "total_params": selected_run.data.params.get("total_params", "N/A"),
+                    "dropout_rate": selected_run.data.params.get("dropout_rate", "N/A")  # Thêm dropout_rate
+                })
+
+                # Hiển thị các chỉ số đã log
                 st.markdown("### Chỉ số đã log")
                 metrics = {
                     "Train Accuracy": selected_run.data.metrics.get("train_accuracy", "N/A"),
@@ -753,7 +770,7 @@ def run_NeuralNetwork_app():
                     "Average Epoch Time (s)": selected_run.data.metrics.get("avg_epoch_time", "N/A")  # Thêm avg_epoch_time
                 }
                 st.json(metrics)
-    
+
                 # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
                 mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
@@ -761,7 +778,7 @@ def run_NeuralNetwork_app():
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
                 st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
-    
+
         except Exception as e:
             st.error(f"Không thể kết nối với MLflow: {e}")
 
