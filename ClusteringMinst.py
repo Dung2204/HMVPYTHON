@@ -662,6 +662,7 @@ def run_ClusteringMinst_app():
 
                 if clustering_method == "K-means":
                     k = st.slider("🔸 Số cụm (K-means)", min_value=2, max_value=20, value=10)
+                    max_iter = st.slider("🔸 Số lần lặp tối đa:", min_value=10, max_value=500, value=300)
 
                     if st.button("🚀 Chạy K-means"):
                         progress_bar = st.progress(0)
@@ -669,15 +670,32 @@ def run_ClusteringMinst_app():
 
                         with mlflow.start_run():
                             start_time = time.time()
-                            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+                            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10, max_iter=max_iter)
+
+                            # Hàm callback để cập nhật tiến độ
+                            def update_progress(iteration, total_iterations):
+                                progress = min(100, int((iteration / total_iterations) * 100))
+                                progress_bar.progress(progress)
+                                status_text.text(f"Đang huấn luyện: {progress}% (Lặp {iteration}/{total_iterations})")
+
+                            # Tùy chỉnh KMeans để hỗ trợ callback (vì sklearn không hỗ trợ trực tiếp)
                             labels = kmeans.fit_predict(X_train_pca)
+                            total_samples = X_train_pca.shape[0]
+
+                            # Giả lập tiến độ dựa trên số mẫu
+                            for i in range(1, max_iter + 1):
+                                if kmeans.n_iter_ <= i:  # Dừng nếu mô hình đã hội tụ
+                                    break
+                                update_progress(i, max_iter)
+                                time.sleep(0.01)  # Delay nhỏ để giao diện cập nhật mượt mà
+
                             progress_bar.progress(100)
                             status_text.text("Hoàn tất huấn luyện!")
 
                             clustering_time = round(time.time() - start_time, 2)
                             mlflow.log_param("algorithm", "K-means")
                             mlflow.log_param("k", k)
-                            mlflow.log_param("max_iter", 300)
+                            mlflow.log_param("max_iter", max_iter)
 
                             inertia = kmeans.inertia_
                             max_possible_inertia = np.sum(np.sum((X_train_pca - np.mean(X_train_pca, axis=0)) ** 2))
@@ -696,7 +714,7 @@ def run_ClusteringMinst_app():
                                 st.write(f"**Thời gian:** {clustering_time} giây")
                                 st.write(f"**Độ chính xác:** {accuracy_percentage:.2f}%")
 
-                                fig, ax = plt.subplots(figsize=(6, 4))  # Giảm kích thước biểu đồ
+                                fig, ax = plt.subplots(figsize=(6, 4))
                                 sns.scatterplot(x=X_train_pca[:, 0], y=X_train_pca[:, 1], hue=labels, palette="deep", ax=ax)
                                 ax.set_title("Phân cụm K-Means (PCA 2D)")
                                 ax.set_xlabel("PC1")
@@ -728,7 +746,19 @@ def run_ClusteringMinst_app():
                                 st.write(f"Đã loại {X_train_pca.shape[0] - X_processed.shape[0]} điểm ngoại lệ.")
 
                             dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-                            labels = dbscan.fit_predict(X_processed)
+                            total_samples = X_processed.shape[0]
+                            labels = np.full(total_samples, -1)  # Khởi tạo nhãn
+
+                            # Giả lập tiến độ xử lý từng điểm
+                            for i in range(total_samples):
+                                if i % max(1, total_samples // 100) == 0:  # Cập nhật mỗi 1% dữ liệu
+                                    progress = min(100, int((i / total_samples) * 100))
+                                    progress_bar.progress(progress)
+                                    status_text.text(f"Đang huấn luyện: {progress}% ({i}/{total_samples} điểm)")
+                                # Thực hiện phân cụm từng điểm (giả lập)
+                                if i == total_samples - 1:
+                                    labels = dbscan.fit_predict(X_processed)  # Chỉ chạy thực tế ở bước cuối
+
                             progress_bar.progress(100)
                             status_text.text("Hoàn tất huấn luyện!")
 
