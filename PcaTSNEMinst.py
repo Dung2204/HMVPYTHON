@@ -647,55 +647,68 @@ def run_PcaTSNEMinst_app():
                 dim_reduction_method = st.selectbox("**Chọn phương pháp thu gọn chiều:**", ["PCA", "t-SNE"])
 
                 if dim_reduction_method == "PCA":
-                    # Tham số của PCA
                     n_components = st.slider("**Số chiều:**", 
                                             min_value=2, 
                                             max_value=min(X_train_subset.shape[1], 20), 
                                             value=5)
-                
                     chart_type = st.selectbox("**Chọn loại biểu đồ:**", ["2D", "3D"])
 
                     if st.button("🚀 Chạy PCA"):
-                        with st.spinner("Đang huấn luyện mô hình..."):
+                        with st.spinner("Đang huấn luyện mô hình PCA..."):
                             with mlflow.start_run():
                                 try:
                                     # Khởi tạo thanh tiến trình
                                     progress_bar = st.progress(0)
                                     progress_text = st.empty()
 
-                                    # Áp dụng PCA với thanh tiến trình đơn giản (dựa trên thời gian)
+                                    # Áp dụng PCA
                                     start_time = time.time()
-                                    pca = PCA(n_components=n_components if chart_type == "3D" else 2, random_state=42)
+                                    n_components_to_use = n_components if chart_type == "3D" else 2
+                                    pca = PCA(n_components=n_components_to_use, random_state=42)
                                     X_train_pca = pca.fit_transform(X_train_subset)
                                     end_time = time.time()
 
-                                    # Ước lượng tiến trình dựa trên thời gian (giả lập)
+                                    # Giả lập thanh tiến trình dựa trên thời gian thực thi
                                     duration = end_time - start_time
                                     for i in range(100):
-                                        time.sleep(duration / 100)  # Giả lập tiến trình
+                                        time.sleep(duration / 100)
                                         progress_bar.progress(i + 1)
                                         progress_text.text(f"Đang chạy PCA... {i + 1}%")
 
+                                    # Lưu kết quả vào session_state
                                     st.session_state.X_train_pca = X_train_pca
                                     st.session_state.explained_variance_ratio_ = pca.explained_variance_ratio_
-                                    mlflow.log_param("algorithm", "PCA")
-                                    mlflow.log_param("n_components", n_components if chart_type == "3D" else 2)
-                                    # Log shape thay vì toàn bộ mảng để tránh log nhiều số
-                                    mlflow.log_param("X_train_pca_shape", X_train_pca.shape)
-                                    mlflow.log_param("X_train_pca_sample", X_train_pca[:5].tolist() if X_train_pca.size > 0 else "Empty")
 
+                                    # Ghi lại các tham số vào MLflow
+                                    mlflow.log_param("algorithm", "PCA")
+                                    mlflow.log_param("n_components", n_components_to_use)
+                                    mlflow.log_param("n_samples", n_samples)
+                                    mlflow.log_param("chart_type", chart_type)
+                                    mlflow.log_param("X_train_pca_shape", X_train_pca.shape)
+                                    # Chỉ ghi lại 1 hàng đầu tiên thay vì 5 hàng
+                                    mlflow.log_param("X_train_pca_sample", X_train_pca[:1].tolist() if X_train_pca.size > 0 else "Empty")
+
+                                    # Ghi lại các chỉ số
                                     explained_variance = np.sum(pca.explained_variance_ratio_)
                                     mlflow.log_metric("explained_variance", round(explained_variance, 4))
+
+                                    # Tính silhouette score để đánh giá chất lượng phân cụm (nếu có nhãn)
+                                    if len(np.unique(st.session_state.y_train[:n_samples])) > 1:
+                                        silhouette_avg = silhouette_score(X_train_pca, st.session_state.y_train[:n_samples])
+                                        mlflow.log_metric("silhouette_score", round(silhouette_avg, 4))
+                                    else:
+                                        silhouette_avg = "Không tính được (cần ít nhất 2 lớp)"
+                                        mlflow.log_metric("silhouette_score", 0.0)
 
                                     # Tạo và hiển thị biểu đồ
                                     if chart_type == "3D":
                                         fig = px.scatter_3d(
                                             x=X_train_pca[:, 0], 
                                             y=X_train_pca[:, 1], 
-                                            z=X_train_pca[:, 2] if n_components >= 3 else np.zeros_like(X_train_pca[:, 0]),
+                                            z=X_train_pca[:, 2] if n_components_to_use >= 3 else np.zeros_like(X_train_pca[:, 0]),
                                             color=st.session_state.y_train[:n_samples],
                                             opacity=0.6,
-                                            title=f"PCA 3D với {n_components} thành phần chính"
+                                            title=f"PCA 3D với {n_components_to_use} thành phần chính"
                                         )
                                     else:
                                         fig = px.scatter(
@@ -708,83 +721,114 @@ def run_PcaTSNEMinst_app():
 
                                     st.plotly_chart(fig, use_container_width=True)
 
+                                    # Hiển thị kết quả
                                     st.markdown(
                                         f"""
                                         ### Kết quả PCA:
                                         - Tổng phương sai được giữ lại: {explained_variance:.2f}  
-                                        - **PCA** giúp giảm chiều dữ liệu trong khi vẫn giữ lại thông tin quan trọng. 
+                                        - Silhouette Score: {silhouette_avg}  
+                                        - **PCA** giúp giảm chiều dữ liệu trong khi vẫn giữ lại thông tin quan trọng.
                                         """
                                     )
                                     progress_text.text("Hoàn tất PCA! 100%")
+
                                 except Exception as e:
                                     st.error(f"⚠️ Lỗi khi chạy PCA: {e}")
-                                mlflow.end_run()
+                                    mlflow.log_param("error", str(e))
+                                finally:
+                                    mlflow.end_run()
 
                 elif dim_reduction_method == "t-SNE":
                     n_components = st.selectbox("**Số chiều đầu ra:**", [2, 3])
                     n_iter = st.slider("**Số vòng lặp tối đa:**", min_value=250, max_value=5000, value=1000, step=250)
 
                     if st.button("🚀 Chạy t-SNE"):
-                        with st.spinner("Đang huấn luyện mô hình..."):
+                        with st.spinner("Đang huấn luyện mô hình t-SNE..."):
                             with mlflow.start_run():
                                 try:
                                     # Khởi tạo thanh tiến trình
                                     progress_bar = st.progress(0)
                                     progress_text = st.empty()
 
-                                    # Áp dụng t-SNE với theo dõi tiến trình dựa trên n_iter
-                                    tsne = TSNE(n_components=n_components, n_iter=n_iter, random_state=42)
+                                    # Áp dụng t-SNE
+                                    tsne = TSNE(n_components=n_components, n_iter=n_iter, random_state=42, verbose=1)
                                     X_train_tsne = tsne.fit_transform(X_train_subset)
 
-                                    # Cập nhật tiến trình (giả lập dựa trên n_iter)
+                                    # Cập nhật thanh tiến trình dựa trên số vòng lặp
                                     for i in range(n_iter):
-                                        if i % (n_iter // 100) == 0:  # Cập nhật mỗi 1% tiến trình
+                                        if i % (n_iter // 100) == 0:
                                             progress = int((i / n_iter) * 100)
                                             progress_bar.progress(progress)
                                             progress_text.text(f"Đang chạy t-SNE... {progress}%")
 
+                                    # Lưu kết quả vào session_state
                                     st.session_state.X_train_tsne = X_train_tsne
-                                    try:
-                                        st.session_state.kl_divergence = tsne.kl_divergence_
-                                        mlflow.log_metric("kl_divergence", round(tsne.kl_divergence_, 4))
-                                    except AttributeError:
-                                        st.session_state.kl_divergence = "Không có thông tin"
-                                        mlflow.log_metric("kl_divergence", 0.0)
+
+                                    # Ghi lại các tham số vào MLflow
                                     mlflow.log_param("algorithm", "t-SNE")
                                     mlflow.log_param("n_components", n_components)
                                     mlflow.log_param("n_iter", n_iter)
-                                    # Log shape thay vì toàn bộ mảng để tránh log nhiều số
+                                    mlflow.log_param("n_samples", n_samples)
                                     mlflow.log_param("X_train_tsne_shape", X_train_tsne.shape)
-                                    mlflow.log_param("X_train_tsne_sample", X_train_tsne[:5].tolist() if X_train_tsne.size > 0 else "Empty")
+                                    # Chỉ ghi lại 1 hàng đầu tiên thay vì 5 hàng
+                                    mlflow.log_param("X_train_tsne_sample", X_train_tsne[:1].tolist() if X_train_tsne.size > 0 else "Empty")
+
+                                    # Ghi lại các chỉ số
+                                    try:
+                                        kl_divergence = tsne.kl_divergence_
+                                        st.session_state.kl_divergence = kl_divergence
+                                        mlflow.log_metric("kl_divergence", round(kl_divergence, 4))
+                                    except AttributeError:
+                                        kl_divergence = "Không có thông tin"
+                                        st.session_state.kl_divergence = kl_divergence
+                                        mlflow.log_metric("kl_divergence", 0.0)
+                                        st.warning("⚠️ KL Divergence không khả dụng trong phiên bản t-SNE này.")
+
+                                    # Tính silhouette score để đánh giá chất lượng phân cụm (nếu có nhãn)
+                                    if len(np.unique(st.session_state.y_train[:n_samples])) > 1:
+                                        silhouette_avg = silhouette_score(X_train_tsne, st.session_state.y_train[:n_samples])
+                                        mlflow.log_metric("silhouette_score", round(silhouette_avg, 4))
+                                    else:
+                                        silhouette_avg = "Không tính được (cần ít nhất 2 lớp)"
+                                        mlflow.log_metric("silhouette_score", 0.0)
 
                                     # Tạo và hiển thị biểu đồ
                                     if n_components == 3:
                                         fig = px.scatter_3d(
-                                            x=X_train_tsne[:, 0], y=X_train_tsne[:, 1], z=X_train_tsne[:, 2],
+                                            x=X_train_tsne[:, 0], 
+                                            y=X_train_tsne[:, 1], 
+                                            z=X_train_tsne[:, 2],
                                             color=st.session_state.y_train[:n_samples],
                                             opacity=0.6,
+                                            title=f"t-SNE 3D với {n_components} chiều"
                                         )
                                     else:
                                         fig = px.scatter(
-                                            x=X_train_tsne[:, 0], y=X_train_tsne[:, 1],
+                                            x=X_train_tsne[:, 0], 
+                                            y=X_train_tsne[:, 1],
                                             color=st.session_state.y_train[:n_samples],
                                             opacity=0.6,
+                                            title="t-SNE 2D với 2 chiều"
                                         )
 
                                     st.plotly_chart(fig, use_container_width=True)
 
+                                    # Hiển thị kết quả
                                     st.markdown(
                                         f"""
                                         ### Kết quả t-SNE:
-                                        - Dữ liệu đã được giảm chiều xuống {n_components} chiều để trực quan hóa.  
+                                        - KL Divergence: {kl_divergence}  
+                                        - Silhouette Score: {silhouette_avg}  
                                         - **t-SNE** giúp giữ lại cấu trúc cục bộ của dữ liệu, thích hợp cho dữ liệu phi tuyến tính.
                                         """
                                     )
                                     progress_text.text("Hoàn tất t-SNE! 100%")
+
                                 except Exception as e:
                                     st.error(f"⚠️ Lỗi khi chạy t-SNE: {e}")
-                                mlflow.end_run()
-                                
+                                    mlflow.log_param("error", str(e))
+                                finally:
+                                    mlflow.end_run()
     with tab_mlflow:
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
@@ -837,7 +881,7 @@ def run_PcaTSNEMinst_app():
             else:
                 st.info("Chưa có Run nào để xóa.")
 
-            # 3) Danh sách các thí nghiệm
+            # 3) Danh sách các thí nghiệm và chi tiết run
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
@@ -853,14 +897,40 @@ def run_PcaTSNEMinst_app():
                 st.json(selected_run.data.params)
 
                 st.markdown("### Chỉ số đã log")
-                metrics = {
-                    "explained_variance": selected_run.data.metrics.get("explained_variance", "N/A"),
-                    "kl_divergence": selected_run.data.metrics.get("kl_divergence", "N/A"),
-                    "n_components": selected_run.data.params.get("n_components", "N/A"),
-                    "n_iter": selected_run.data.params.get("n_iter", "N/A"),
-                    "n_samples": selected_run.data.params.get("n_samples", "N/A"),
-                    "chart_type": selected_run.data.params.get("chart_type", "N/A")
-                }
+                # Lấy thuật toán từ tham số
+                algorithm = selected_run.data.params.get("algorithm", "Unknown")
+
+                # Tạo dictionary chỉ số dựa trên thuật toán
+                if algorithm == "PCA":
+                    metrics = {
+                        "explained_variance": selected_run.data.metrics.get("explained_variance", "N/A"),
+                        "kl_divergence": "N/A",
+                        "n_components": selected_run.data.params.get("n_components", "N/A"),
+                        "n_iter": "N/A",
+                        "n_samples": selected_run.data.params.get("n_samples", "N/A"),
+                        "chart_type": selected_run.data.params.get("chart_type", "N/A"),
+                        "silhouette_score": selected_run.data.metrics.get("silhouette_score", "N/A")
+                    }
+                elif algorithm == "t-SNE":
+                    metrics = {
+                        "explained_variance": "N/A",
+                        "kl_divergence": selected_run.data.metrics.get("kl_divergence", "N/A"),
+                        "n_components": selected_run.data.params.get("n_components", "N/A"),
+                        "n_iter": selected_run.data.params.get("n_iter", "N/A"),
+                        "n_samples": selected_run.data.params.get("n_samples", "N/A"),
+                        "silhouette_score": selected_run.data.metrics.get("silhouette_score", "N/A")
+                    }
+                else:
+                    metrics = {
+                        "explained_variance": "N/A",
+                        "kl_divergence": "N/A",
+                        "n_components": "N/A",
+                        "n_iter": "N/A",
+                        "n_samples": "N/A",
+                        "chart_type": "N/A",
+                        "silhouette_score": "N/A"
+                    }
+
                 st.json(metrics)
 
                 # 5) Nút bấm mở MLflow UI
