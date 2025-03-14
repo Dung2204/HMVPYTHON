@@ -714,7 +714,8 @@ def run_PcaTSNEMinst_app():
                                     # Tính silhouette score để đánh giá chất lượng phân cụm (nếu có nhãn)
                                     if len(np.unique(st.session_state.y_train[:n_samples])) > 1:
                                         silhouette_avg = silhouette_score(X_train_pca, st.session_state.y_train[:n_samples])
-                                        mlflow.log_metric("silhouette_score", round(silhouette_avg, 4))
+                                        silhouette_avg = round(silhouette_avg, 2)
+                                        mlflow.log_metric("silhouette_score", silhouette_avg)
                                     else:
                                         silhouette_avg = "Không tính được (cần ít nhất 2 lớp)"
                                         mlflow.log_metric("silhouette_score", 0.0)
@@ -740,12 +741,15 @@ def run_PcaTSNEMinst_app():
     
                                     st.plotly_chart(fig, use_container_width=True)
     
+                                    # Xử lý silhouette_avg trước khi hiển thị
+                                    silhouette_display = silhouette_avg if isinstance(silhouette_avg, str) else f"{silhouette_avg:.2f}"
+    
                                     # Hiển thị kết quả
                                     st.markdown(
                                         f"""
                                         ### Kết quả PCA:
                                         - Tổng phương sai được giữ lại: {explained_variance:.2f}  
-                                        - Silhouette Score: {silhouette_avg:.2f if isinstance(silhouette_avg, (int, float)) else silhouette_avg}  
+                                        - Silhouette Score: {silhouette_display}  
                                         - **PCA** giúp giảm chiều dữ liệu trong khi vẫn giữ lại thông tin quan trọng.
                                         """
                                     )
@@ -842,12 +846,16 @@ def run_PcaTSNEMinst_app():
     
                                     st.plotly_chart(fig, use_container_width=True)
     
+                                    # Xử lý kl_divergence và silhouette_avg trước khi hiển thị
+                                    kl_display = kl_divergence if isinstance(kl_divergence, str) else f"{kl_divergence:.2f}"
+                                    silhouette_display = silhouette_avg if isinstance(silhouette_avg, str) else f"{silhouette_avg:.2f}"
+    
                                     # Hiển thị kết quả
                                     st.markdown(
                                         f"""
                                         ### Kết quả t-SNE:
-                                        - KL Divergence: {kl_divergence}  
-                                        - Silhouette Score: {silhouette_avg if isinstance(silhouette_avg, (int, float)) else silhouette_avg}  
+                                        - KL Divergence: {kl_display}  
+                                        - Silhouette Score: {silhouette_display}  
                                         - **t-SNE** giúp giữ lại cấu trúc cục bộ của dữ liệu, thích hợp cho dữ liệu phi tuyến tính.
                                         """
                                     )
