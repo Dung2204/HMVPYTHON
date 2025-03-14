@@ -633,202 +633,6 @@ def run_PcaTSNEMinst_app():
                     st.warning("Dữ liệu chưa được chuẩn hóa. Vui lòng kiểm tra lại.")
 
 
-    # with tab_preprocess:
-    #     with st.expander("**Chọn phương pháp thu gọn chiều**", expanded=True):
-    #         # Kiểm tra xem dữ liệu đã được chuẩn bị chưa
-    #         if "X_train_subset" not in st.session_state or "n_samples" not in st.session_state:
-    #             st.error("⚠️ Vui lòng chọn số lượng mẫu ở tab 'Số lượng mẫu để giảm chiều' trước khi tiếp tục.")
-    #         else:
-    #             # Lấy dữ liệu từ session_state
-    #             X_train_subset = st.session_state.X_train_subset
-    #             n_samples = st.session_state.n_samples
-
-    #             # Chọn phương pháp giảm chiều
-    #             dim_reduction_method = st.selectbox("**Chọn phương pháp thu gọn chiều:**", ["PCA", "t-SNE"])
-
-    #             if dim_reduction_method == "PCA":
-    #                 n_components = st.slider("**Số chiều:**", 
-    #                                         min_value=2, 
-    #                                         max_value=min(X_train_subset.shape[1], 20), 
-    #                                         value=5)
-    #                 chart_type = st.selectbox("**Chọn loại biểu đồ:**", ["2D", "3D"])
-
-    #                 if st.button("🚀 Chạy PCA"):
-    #                     with st.spinner("Đang huấn luyện mô hình PCA..."):
-    #                         with mlflow.start_run():
-    #                             try:
-    #                                 # Khởi tạo thanh tiến trình
-    #                                 progress_bar = st.progress(0)
-    #                                 progress_text = st.empty()
-
-    #                                 # Áp dụng PCA
-    #                                 start_time = time.time()
-    #                                 n_components_to_use = n_components if chart_type == "3D" else 2
-    #                                 pca = PCA(n_components=n_components_to_use, random_state=42)
-    #                                 X_train_pca = pca.fit_transform(X_train_subset)
-    #                                 end_time = time.time()
-
-    #                                 # Giả lập thanh tiến trình dựa trên thời gian thực thi
-    #                                 duration = end_time - start_time
-    #                                 for i in range(100):
-    #                                     time.sleep(duration / 100)
-    #                                     progress_bar.progress(i + 1)
-    #                                     progress_text.text(f"Đang chạy PCA... {i + 1}%")
-
-    #                                 # Lưu kết quả vào session_state
-    #                                 st.session_state.X_train_pca = X_train_pca
-    #                                 st.session_state.explained_variance_ratio_ = pca.explained_variance_ratio_
-
-    #                                 # Ghi lại các tham số vào MLflow
-    #                                 mlflow.log_param("algorithm", "PCA")
-    #                                 mlflow.log_param("n_components", n_components_to_use)
-    #                                 mlflow.log_param("n_samples", n_samples)
-    #                                 mlflow.log_param("chart_type", chart_type)
-    #                                 mlflow.log_param("X_train_pca_shape", X_train_pca.shape)
-    #                                 # Chỉ ghi lại 1 hàng đầu tiên thay vì 5 hàng
-    #                                 mlflow.log_param("X_train_pca_sample", X_train_pca[:1].tolist() if X_train_pca.size > 0 else "Empty")
-
-    #                                 # Ghi lại các chỉ số
-    #                                 explained_variance = np.sum(pca.explained_variance_ratio_)
-    #                                 mlflow.log_metric("explained_variance", round(explained_variance, 4))
-
-    #                                 # Tính silhouette score để đánh giá chất lượng phân cụm (nếu có nhãn)
-    #                                 if len(np.unique(st.session_state.y_train[:n_samples])) > 1:
-    #                                     silhouette_avg = silhouette_score(X_train_pca, st.session_state.y_train[:n_samples])
-    #                                     mlflow.log_metric("silhouette_score", round(silhouette_avg, 4))
-    #                                 else:
-    #                                     silhouette_avg = "Không tính được (cần ít nhất 2 lớp)"
-    #                                     mlflow.log_metric("silhouette_score", 0.0)
-
-    #                                 # Tạo và hiển thị biểu đồ
-    #                                 if chart_type == "3D":
-    #                                     fig = px.scatter_3d(
-    #                                         x=X_train_pca[:, 0], 
-    #                                         y=X_train_pca[:, 1], 
-    #                                         z=X_train_pca[:, 2] if n_components_to_use >= 3 else np.zeros_like(X_train_pca[:, 0]),
-    #                                         color=st.session_state.y_train[:n_samples],
-    #                                         opacity=0.6,
-    #                                         title=f"PCA 3D với {n_components_to_use} thành phần chính"
-    #                                     )
-    #                                 else:
-    #                                     fig = px.scatter(
-    #                                         x=X_train_pca[:, 0], 
-    #                                         y=X_train_pca[:, 1],
-    #                                         color=st.session_state.y_train[:n_samples],
-    #                                         opacity=0.6,
-    #                                         title="PCA 2D với 2 thành phần chính"
-    #                                     )
-
-    #                                 st.plotly_chart(fig, use_container_width=True)
-
-    #                                 # Hiển thị kết quả
-    #                                 st.markdown(
-    #                                     f"""
-    #                                     ### Kết quả PCA:
-    #                                     - Tổng phương sai được giữ lại: {explained_variance:.2f}  
-    #                                     - Silhouette Score: {silhouette_avg}  
-    #                                     - **PCA** giúp giảm chiều dữ liệu trong khi vẫn giữ lại thông tin quan trọng.
-    #                                     """
-    #                                 )
-    #                                 progress_text.text("Hoàn tất PCA! 100%")
-
-    #                             except Exception as e:
-    #                                 st.error(f"⚠️ Lỗi khi chạy PCA: {e}")
-    #                                 mlflow.log_param("error", str(e))
-    #                             finally:
-    #                                 mlflow.end_run()
-
-    #             elif dim_reduction_method == "t-SNE":
-    #                 n_components = st.selectbox("**Số chiều đầu ra:**", [2, 3])
-    #                 n_iter = st.slider("**Số vòng lặp tối đa:**", min_value=250, max_value=5000, value=1000, step=250)
-
-    #                 if st.button("🚀 Chạy t-SNE"):
-    #                     with st.spinner("Đang huấn luyện mô hình t-SNE..."):
-    #                         with mlflow.start_run():
-    #                             try:
-    #                                 # Khởi tạo thanh tiến trình
-    #                                 progress_bar = st.progress(0)
-    #                                 progress_text = st.empty()
-
-    #                                 # Áp dụng t-SNE
-    #                                 tsne = TSNE(n_components=n_components, n_iter=n_iter, random_state=42, verbose=1)
-    #                                 X_train_tsne = tsne.fit_transform(X_train_subset)
-
-    #                                 # Cập nhật thanh tiến trình dựa trên số vòng lặp
-    #                                 for i in range(n_iter):
-    #                                     if i % (n_iter // 100) == 0:
-    #                                         progress = int((i / n_iter) * 100)
-    #                                         progress_bar.progress(progress)
-    #                                         progress_text.text(f"Đang chạy t-SNE... {progress}%")
-
-    #                                 # Lưu kết quả vào session_state
-    #                                 st.session_state.X_train_tsne = X_train_tsne
-
-    #                                 # Ghi lại các tham số vào MLflow
-    #                                 mlflow.log_param("algorithm", "t-SNE")
-    #                                 mlflow.log_param("n_components", n_components)
-    #                                 mlflow.log_param("n_iter", n_iter)
-    #                                 mlflow.log_param("n_samples", n_samples)
-    #                                 mlflow.log_param("X_train_tsne_shape", X_train_tsne.shape)
-    #                                 # Chỉ ghi lại 1 hàng đầu tiên thay vì 5 hàng
-    #                                 mlflow.log_param("X_train_tsne_sample", X_train_tsne[:1].tolist() if X_train_tsne.size > 0 else "Empty")
-
-    #                                 # Ghi lại các chỉ số
-    #                                 try:
-    #                                     kl_divergence = tsne.kl_divergence_
-    #                                     st.session_state.kl_divergence = kl_divergence
-    #                                     mlflow.log_metric("kl_divergence", round(kl_divergence, 4))
-    #                                 except AttributeError:
-    #                                     kl_divergence = "Không có thông tin"
-    #                                     st.session_state.kl_divergence = kl_divergence
-    #                                     mlflow.log_metric("kl_divergence", 0.0)
-    #                                     st.warning("⚠️ KL Divergence không khả dụng trong phiên bản t-SNE này.")
-
-    #                                 # Tính silhouette score để đánh giá chất lượng phân cụm (nếu có nhãn)
-    #                                 if len(np.unique(st.session_state.y_train[:n_samples])) > 1:
-    #                                     silhouette_avg = silhouette_score(X_train_tsne, st.session_state.y_train[:n_samples])
-    #                                     mlflow.log_metric("silhouette_score", round(silhouette_avg, 4))
-    #                                 else:
-    #                                     silhouette_avg = "Không tính được (cần ít nhất 2 lớp)"
-    #                                     mlflow.log_metric("silhouette_score", 0.0)
-
-    #                                 # Tạo và hiển thị biểu đồ
-    #                                 if n_components == 3:
-    #                                     fig = px.scatter_3d(
-    #                                         x=X_train_tsne[:, 0], 
-    #                                         y=X_train_tsne[:, 1], 
-    #                                         z=X_train_tsne[:, 2],
-    #                                         color=st.session_state.y_train[:n_samples],
-    #                                         opacity=0.6,
-    #                                         title=f"t-SNE 3D với {n_components} chiều"
-    #                                     )
-    #                                 else:
-    #                                     fig = px.scatter(
-    #                                         x=X_train_tsne[:, 0], 
-    #                                         y=X_train_tsne[:, 1],
-    #                                         color=st.session_state.y_train[:n_samples],
-    #                                         opacity=0.6,
-    #                                         title="t-SNE 2D với 2 chiều"
-    #                                     )
-
-    #                                 st.plotly_chart(fig, use_container_width=True)
-
-    #                                 # Hiển thị kết quả
-    #                                 st.markdown(
-    #                                     f"""
-    #                                     ### Kết quả t-SNE:
-    #                                     - KL Divergence: {kl_divergence}  
-    #                                     - Silhouette Score: {silhouette_avg}  
-    #                                     - **t-SNE** giúp giữ lại cấu trúc cục bộ của dữ liệu, thích hợp cho dữ liệu phi tuyến tính.
-    #                                     """
-    #                                 )
-    #                                 progress_text.text("Hoàn tất t-SNE! 100%")
-
-    #                             except Exception as e:
-    #                                 st.error(f"⚠️ Lỗi khi chạy t-SNE: {e}")
-    #                                 mlflow.log_param("error", str(e))
-    #                             finally:
-    #                                 mlflow.end_run()
     with tab_preprocess:
         with st.expander("**Chọn phương pháp thu gọn chiều**", expanded=True):
             # Kiểm tra xem dữ liệu đã được chuẩn bị chưa
@@ -941,7 +745,7 @@ def run_PcaTSNEMinst_app():
                                         f"""
                                         ### Kết quả PCA:
                                         - Tổng phương sai được giữ lại: {explained_variance:.2f}  
-                                        - Silhouette Score: {silhouette_avg}  
+                                        - Silhouette Score: {silhouette_avg:.2f if isinstance(silhouette_avg, (int, float)) else silhouette_avg}  
                                         - **PCA** giúp giảm chiều dữ liệu trong khi vẫn giữ lại thông tin quan trọng.
                                         """
                                     )
@@ -970,15 +774,11 @@ def run_PcaTSNEMinst_app():
                                     X_train_tsne = tsne.fit_transform(X_train_subset)
     
                                     # Vì scikit-learn không cung cấp callback, giả lập tiến độ dựa trên số vòng lặp
-                                    # t-SNE thường chạy n_iter vòng, nhưng verbose=1 sẽ xuất thông tin vào console
-                                    # Chúng ta sẽ giả lập tiến độ dựa trên thời gian và số vòng lặp tối đa
                                     start_time = time.time()
                                     for i in range(n_iter):
-                                        # Giả lập tiến độ dựa trên số vòng lặp
                                         progress = int((i / n_iter) * 100)
                                         progress_bar.progress(progress)
                                         progress_text.text(f"Đang chạy t-SNE (vòng lặp {i}/{n_iter})... {progress}%")
-                                        # Giả lập thời gian chờ nhỏ để người dùng thấy thanh tiến trình cập nhật
                                         time.sleep(0.01)
     
                                     # Hoàn tất và cập nhật tiến độ
@@ -999,8 +799,13 @@ def run_PcaTSNEMinst_app():
                                     # Ghi lại các chỉ số
                                     try:
                                         kl_divergence = tsne.kl_divergence_
+                                        # Kiểm tra và xử lý giá trị KL Divergence bất thường
+                                        if kl_divergence > 1e+100 or kl_divergence != kl_divergence:  # Kiểm tra vô cực hoặc NaN
+                                            kl_divergence = "N/A (Giá trị bất thường)"
+                                        else:
+                                            kl_divergence = round(kl_divergence, 2)
                                         st.session_state.kl_divergence = kl_divergence
-                                        mlflow.log_metric("kl_divergence", round(kl_divergence, 4))
+                                        mlflow.log_metric("kl_divergence", kl_divergence if isinstance(kl_divergence, (int, float)) else 0.0)
                                     except AttributeError:
                                         kl_divergence = "Không có thông tin"
                                         st.session_state.kl_divergence = kl_divergence
@@ -1010,7 +815,8 @@ def run_PcaTSNEMinst_app():
                                     # Tính silhouette score để đánh giá chất lượng phân cụm (nếu có nhãn)
                                     if len(np.unique(st.session_state.y_train[:n_samples])) > 1:
                                         silhouette_avg = silhouette_score(X_train_tsne, st.session_state.y_train[:n_samples])
-                                        mlflow.log_metric("silhouette_score", round(silhouette_avg, 4))
+                                        silhouette_avg = round(silhouette_avg, 2)
+                                        mlflow.log_metric("silhouette_score", silhouette_avg)
                                     else:
                                         silhouette_avg = "Không tính được (cần ít nhất 2 lớp)"
                                         mlflow.log_metric("silhouette_score", 0.0)
@@ -1041,7 +847,7 @@ def run_PcaTSNEMinst_app():
                                         f"""
                                         ### Kết quả t-SNE:
                                         - KL Divergence: {kl_divergence}  
-                                        - Silhouette Score: {silhouette_avg}  
+                                        - Silhouette Score: {silhouette_avg if isinstance(silhouette_avg, (int, float)) else silhouette_avg}  
                                         - **t-SNE** giúp giữ lại cấu trúc cục bộ của dữ liệu, thích hợp cho dữ liệu phi tuyến tính.
                                         """
                                     )
