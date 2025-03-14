@@ -15,7 +15,7 @@ st.set_page_config(page_title="Multi-App", layout="wide")
 st.sidebar.title("Home page")
 app_choice = st.sidebar.selectbox(
     "Chọn ứng dụng:",
-    ["Linear Regression", "Classification", "Clustering","PCA_T-SNE","Neural_Network,Pseudo Labelling "]
+    ["Linear Regression", "Classification", "Clustering","PCA_T-SNE","Neural_Network","Pseudo Labelling"]
 )
 
 # Nội dung chính của trang
@@ -32,5 +32,5 @@ elif app_choice == "PCA_T-SNE":
     run_PcaTSNEMinst_app()
 elif app_choice == "Neural_Network":
     run_NeuralNetwork_app()   
-elif app_choice == "Neural_Network":
+elif app_choice == "Pseudo Labelling":
     run_PseudoLabeling_app()       
