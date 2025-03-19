@@ -660,6 +660,15 @@ def run_ClusteringMinst_app():
                 # Chọn phương pháp phân cụm
                 clustering_method = st.selectbox("🔹 Chọn phương pháp phân cụm:", ["K-means", "DBSCAN"])
 
+                # Khởi tạo giá trị mặc định cho tên mô hình nếu chưa có trong session_state
+                if "model_name" not in st.session_state:
+                    st.session_state.model_name = f"{clustering_method}_model_{time.strftime('%Y%m%d_%H%M%S')}"
+
+                # Thêm trường nhập tên mô hình, liên kết với session_state
+                model_name = st.text_input("🔹 Đặt tên cho mô hình:", value=st.session_state.model_name, key="model_name_input")
+                # Cập nhật session_state khi người dùng thay đổi tên
+                st.session_state.model_name = model_name
+
                 if clustering_method == "K-means":
                     k = st.slider("🔸 Số cụm (K-means)", min_value=2, max_value=20, value=10)
                     max_iter = st.slider("🔸 Số lần lặp tối đa:", min_value=10, max_value=500, value=300)
@@ -668,26 +677,23 @@ def run_ClusteringMinst_app():
                         progress_bar = st.progress(0)
                         status_text = st.empty()
 
-                        with mlflow.start_run():
+                        with mlflow.start_run(run_name=model_name):  # Sử dụng tên từ session_state
                             start_time = time.time()
                             kmeans = KMeans(n_clusters=k, random_state=42, n_init=10, max_iter=max_iter)
 
-                            # Hàm callback để cập nhật tiến độ
                             def update_progress(iteration, total_iterations):
                                 progress = min(100, int((iteration / total_iterations) * 100))
                                 progress_bar.progress(progress)
                                 status_text.text(f"Đang huấn luyện: {progress}% (Lặp {iteration}/{total_iterations})")
 
-                            # Tùy chỉnh KMeans để hỗ trợ callback (vì sklearn không hỗ trợ trực tiếp)
                             labels = kmeans.fit_predict(X_train_pca)
                             total_samples = X_train_pca.shape[0]
 
-                            # Giả lập tiến độ dựa trên số mẫu
                             for i in range(1, max_iter + 1):
-                                if kmeans.n_iter_ <= i:  # Dừng nếu mô hình đã hội tụ
+                                if kmeans.n_iter_ <= i:
                                     break
                                 update_progress(i, max_iter)
-                                time.sleep(0.01)  # Delay nhỏ để giao diện cập nhật mượt mà
+                                time.sleep(0.01)
 
                             progress_bar.progress(100)
                             status_text.text("Hoàn tất huấn luyện!")
@@ -707,6 +713,7 @@ def run_ClusteringMinst_app():
 
                             with st.container(border=True):
                                 st.write("### Kết quả phân cụm K-Means:")
+                                st.write(f"**Tên mô hình:** {model_name}")
                                 st.write(f"**Phương pháp:** K-means")
                                 st.write(f"**Số cụm chọn:** {k}")
                                 st.write(f"**Số cụm thực tế:** {num_clusters_actual}")
@@ -735,7 +742,7 @@ def run_ClusteringMinst_app():
                         progress_bar = st.progress(0)
                         status_text = st.empty()
 
-                        with mlflow.start_run():
+                        with mlflow.start_run(run_name=model_name):  # Sử dụng tên từ session_state
                             start_time = time.time()
                             X_processed = X_train_pca.copy()
 
@@ -747,17 +754,15 @@ def run_ClusteringMinst_app():
 
                             dbscan = DBSCAN(eps=eps, min_samples=min_samples)
                             total_samples = X_processed.shape[0]
-                            labels = np.full(total_samples, -1)  # Khởi tạo nhãn
+                            labels = np.full(total_samples, -1)
 
-                            # Giả lập tiến độ xử lý từng điểm
                             for i in range(total_samples):
-                                if i % max(1, total_samples // 100) == 0:  # Cập nhật mỗi 1% dữ liệu
+                                if i % max(1, total_samples // 100) == 0:
                                     progress = min(100, int((i / total_samples) * 100))
                                     progress_bar.progress(progress)
                                     status_text.text(f"Đang huấn luyện: {progress}% ({i}/{total_samples} điểm)")
-                                # Thực hiện phân cụm từng điểm (giả lập)
                                 if i == total_samples - 1:
-                                    labels = dbscan.fit_predict(X_processed)  # Chỉ chạy thực tế ở bước cuối
+                                    labels = dbscan.fit_predict(X_processed)
 
                             progress_bar.progress(100)
                             status_text.text("Hoàn tất huấn luyện!")
@@ -776,6 +781,7 @@ def run_ClusteringMinst_app():
 
                             with st.container(border=True):
                                 st.write("### Kết quả phân cụm DBSCAN:")
+                                st.write(f"**Tên mô hình:** {model_name}")
                                 st.write(f"**Phương pháp:** DBSCAN")
                                 st.write(f"**Số cụm thực tế:** {num_clusters}")
                                 st.write(f"**Số mẫu xử lý:** {num_samples}")
@@ -796,7 +802,6 @@ def run_ClusteringMinst_app():
 
                             if noise_points / num_samples > 0.3:
                                 st.warning(f"Cảnh báo: Tỷ lệ nhiễu cao ({round((noise_points / num_samples) * 100, 2)}%).")
-    
 
     with tab_mlflow:
         st.header("Thông tin Huấn luyện & MLflow UI")
@@ -804,7 +809,6 @@ def run_ClusteringMinst_app():
             client = MlflowClient()
             experiment_name = "Clustering"
 
-            # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
             if experiment is None:
                 experiment_id = client.create_experiment(experiment_name)
@@ -815,10 +819,8 @@ def run_ClusteringMinst_app():
 
             mlflow.set_experiment(experiment_name)
 
-            # Truy vấn các run trong experiment
             runs = client.search_runs(experiment_ids=[experiment_id])
 
-            # 1) Chọn và đổi tên Run Name
             st.subheader("Đổi tên Run")
             if runs:
                 run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
@@ -837,7 +839,6 @@ def run_ClusteringMinst_app():
             else:
                 st.info("Chưa có Run nào được log.")
 
-            # 2) Xóa Run
             st.subheader("Danh sách Run")
             if runs:
                 selected_run_id_to_delete = st.selectbox("", 
@@ -846,56 +847,56 @@ def run_ClusteringMinst_app():
                 if st.button("Xóa Run", key="delete_run"):
                     client.delete_run(selected_run_id_to_delete)
                     st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
-                    st.experimental_rerun()  # Tự động làm mới giao diện
+                    st.experimental_rerun()
             else:
                 st.info("Chưa có Run nào để xóa.")
 
-            # 3) Danh sách các thí nghiệm và thông tin chi tiết
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
                                             options=list(run_options.keys()), 
                                             format_func=lambda x: run_options[x])
 
-                # 4) Hiển thị thông tin chi tiết của Run được chọn
                 selected_run = client.get_run(selected_run_id)
                 st.write(f"**Run ID:** {selected_run_id}")
                 st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
 
-                # Hiển thị tham số đã log
-                st.markdown("### Tham số đã log")
-                params = {}
-                # algorithm = selected_run.data.params.get("algorithm", "N/A")
-                # params["Algorithm"] = algorithm
+                algorithm = selected_run.data.params.get("algorithm", "N/A")
 
-                # if algorithm == "K-means":
-                params["K"] = selected_run.data.params.get("k", "N/A")
-                params["Max Iterations"] = selected_run.data.params.get("max_iter", "N/A")
-                # elif algorithm == "DBSCAN":
-                params["EPS"] = selected_run.data.params.get("eps", "N/A")
-                params["Min Samples"] = selected_run.data.params.get("min_samples", "N/A")
-                params["Preprocess Noise"] = selected_run.data.params.get("preprocess_noise", "N/A")
-                    # params["Normalize Data"] = selected_run.data.params.get("normalize_data", "N/A")
-                
+                # Hiển thị tham số đã log dựa trên algorithm
+                st.markdown("### Tham số đã log")
+                params = {"Algorithm": algorithm}
+                if algorithm == "K-means":
+                    params["K"] = selected_run.data.params.get("k", "N/A")
+                    params["Max Iterations"] = selected_run.data.params.get("max_iter", "N/A")
+                elif algorithm == "DBSCAN":
+                    params["EPS"] = selected_run.data.params.get("eps", "N/A")
+                    params["Min Samples"] = selected_run.data.params.get("min_samples", "N/A")
+                    params["Preprocess Noise"] = selected_run.data.params.get("preprocess_noise", "N/A")
                 st.json(params)
 
-                # Hiển thị chỉ số đã log
+                # Hiển thị chỉ số đã log dựa trên algorithm
                 st.markdown("### Chỉ số đã log")
-                metrics = {}
-                # if algorithm == "K-means":
-                metrics["Inertia"] = selected_run.data.metrics.get("inertia", "N/A")
-                # elif algorithm == "DBSCAN":
-                metrics["Number of Clusters"] = selected_run.data.metrics.get("num_clusters", "N/A")
-                metrics["Noise Points"] = selected_run.data.metrics.get("noise_points", "N/A")
-                    # Thêm kích thước của từng cụm nếu có
-                for key, value in selected_run.data.metrics.items():
-                    if key.startswith("cluster_") and key.endswith("_size"):
-                        cluster_id = key.split("_")[1]
-                        metrics[f"Cluster {cluster_id} Size"] = value
-                
+                metrics = {"Clustering Time (s)": selected_run.data.metrics.get("clustering_time", "N/A")}
+                if algorithm == "K-means":
+                    metrics["Inertia"] = selected_run.data.metrics.get("inertia", "N/A")
+                    metrics["Silhouette Score"] = selected_run.data.metrics.get("silhouette_score", "N/A")
+                    metrics["Davies-Bouldin Score"] = selected_run.data.metrics.get("davies_bouldin_score", "N/A")
+                    for key, value in selected_run.data.metrics.items():
+                        if key.startswith("cluster_") and key.endswith("_size"):
+                            cluster_id = key.split("_")[1]
+                            metrics[f"Cluster {cluster_id} Size"] = value
+                elif algorithm == "DBSCAN":
+                    metrics["Number of Clusters"] = selected_run.data.metrics.get("num_clusters", "N/A")
+                    metrics["Noise Points"] = selected_run.data.metrics.get("noise_points", "N/A")
+                    metrics["Silhouette Score"] = selected_run.data.metrics.get("silhouette_score", "N/A")
+                    metrics["Davies-Bouldin Score"] = selected_run.data.metrics.get("davies_bouldin_score", "N/A")
+                    for key, value in selected_run.data.metrics.items():
+                        if key.startswith("cluster_") and key.endswith("_size"):
+                            cluster_id = key.split("_")[1]
+                            metrics[f"Cluster {cluster_id} Size"] = value
                 st.json(metrics)
 
-                # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
                 mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
                 if st.button("Mở MLflow UI"):
@@ -905,7 +906,6 @@ def run_ClusteringMinst_app():
 
         except Exception as e:
             st.error(f"Không thể kết nối với MLflow: {e}")
-
 if __name__ == "__main__":
     run_ClusteringMinst_app()    
 
