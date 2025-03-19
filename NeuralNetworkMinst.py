@@ -159,159 +159,262 @@ def run_NeuralNetwork_app():
 
     with tab_note:
         with st.expander("**Thông tin mô hình**", expanded=True):
-            st.markdown("## 🔹 Neural Network (Mạng Nơ-ron Nhân tạo)")
-            st.markdown("---")
-            st.markdown("### Khái niệm Neural Network")
-            st.markdown(
+            model_option = st.selectbox("Chọn mô hình", ["Neural Network (Mạng Nơ-ron Nhân tạo)", "Pseudo Labelling (Gắn nhãn Giả)"])
+
+            if model_option == "Neural Network (Mạng Nơ-ron Nhân tạo)":
+                st.markdown("## 🔹 Neural Network (Mạng Nơ-ron Nhân tạo)")
+                st.markdown("---")
+                st.markdown("### Khái niệm Neural Network")
+                st.markdown(
+                        """
+                        - **Neural Network (Mạng Nơ-ron Nhân tạo)** là một mô hình học máy được lấy cảm hứng từ cấu trúc của mạng nơ-ron sinh học trong não người.  
+                        - Nó bao gồm các **nơ-ron** (nodes) được tổ chức thành **lớp** (layers): lớp đầu vào (input layer), các lớp ẩn (hidden layers), và lớp đầu ra (output layer).  
+                        - Neural Network đặc biệt mạnh trong việc xử lý các bài toán phi tuyến tính và học các đặc trưng phức tạp từ dữ liệu.
+                        """
+                )
+                st.image("image1.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+                # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image1.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+
+                st.markdown("---")
+                st.markdown("### Cấu trúc Neural Network")
+
+                st.markdown(
                     """
-                    - **Neural Network (Mạng Nơ-ron Nhân tạo)** là một mô hình học máy được lấy cảm hứng từ cấu trúc của mạng nơ-ron sinh học trong não người.  
-                    - Nó bao gồm các **nơ-ron** (nodes) được tổ chức thành **lớp** (layers): lớp đầu vào (input layer), các lớp ẩn (hidden layers), và lớp đầu ra (output layer).  
-                    - Neural Network đặc biệt mạnh trong việc xử lý các bài toán phi tuyến tính và học các đặc trưng phức tạp từ dữ liệu.
+                    Mạng Nơ-ron Nhân tạo (Neural Network) có cấu trúc cơ bản bao gồm các thành phần chính sau:
+
+                    1. **Lớp đầu vào (Input Layer)**:  
+                    - Đây là nơi nhận dữ liệu thô từ bài toán (ví dụ: giá trị pixel của ảnh, số liệu thống kê, văn bản, v.v.).  
+                    - Số lượng nơ-ron trong lớp này tương ứng với số đặc trưng (features) của dữ liệu đầu vào.
+
+                    2. **Các lớp ẩn (Hidden Layers)**:  
+                    - Là các lớp trung gian giữa lớp đầu vào và lớp đầu ra, nơi diễn ra quá trình xử lý và học hỏi.  
+                    - Mỗi lớp ẩn bao gồm nhiều nơ-ron, và số lượng lớp ẩn cũng như nơ-ron trong mỗi lớp có thể thay đổi tùy thuộc vào độ phức tạp của bài toán.  
+                    - Các nơ-ron trong lớp ẩn áp dụng **hàm kích hoạt (activation function)** như ReLU, Sigmoid hoặc Tanh để xử lý tính phi tuyến tính.
+                    - **Lưu ý rằng:** một Neural Network chỉ có 1 lớp đầu vào và 1 lớp đầu ra nhưng có thể có nhiều các lớp ẩn 
+                    3. **Lớp đầu ra (Output Layer)**:  
+                    - Lớp này tạo ra kết quả cuối cùng của mạng (dự đoán hoặc phân loại).  
+                    - Số lượng nơ-ron trong lớp đầu ra phụ thuộc vào loại bài toán:  
+                        - **Phân loại nhị phân**: 1 nơ-ron (ví dụ: dùng hàm Sigmoid).  
+                        - **Phân loại đa lớp**: Số nơ-ron bằng số lớp (ví dụ: dùng hàm Softmax).  
+                        - **Hồi quy**: 1 hoặc nhiều nơ-ron tùy theo số lượng giá trị cần dự đoán.
                     """
-            )
-            st.image("image1.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
-            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image1.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+                )
+                st.image("image2.png", caption="Cấu trúc Neural Network có 2 hoặc nhiều lớp ẩn (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+                # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image2.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
 
-            st.markdown("---")
-            st.markdown("### Cấu trúc Neural Network")
-
-            st.markdown(
-                """
-                Mạng Nơ-ron Nhân tạo (Neural Network) có cấu trúc cơ bản bao gồm các thành phần chính sau:
-
-                1. **Lớp đầu vào (Input Layer)**:  
-                - Đây là nơi nhận dữ liệu thô từ bài toán (ví dụ: giá trị pixel của ảnh, số liệu thống kê, văn bản, v.v.).  
-                - Số lượng nơ-ron trong lớp này tương ứng với số đặc trưng (features) của dữ liệu đầu vào.
-
-                2. **Các lớp ẩn (Hidden Layers)**:  
-                - Là các lớp trung gian giữa lớp đầu vào và lớp đầu ra, nơi diễn ra quá trình xử lý và học hỏi.  
-                - Mỗi lớp ẩn bao gồm nhiều nơ-ron, và số lượng lớp ẩn cũng như nơ-ron trong mỗi lớp có thể thay đổi tùy thuộc vào độ phức tạp của bài toán.  
-                - Các nơ-ron trong lớp ẩn áp dụng **hàm kích hoạt (activation function)** như ReLU, Sigmoid hoặc Tanh để xử lý tính phi tuyến tính.
-                - **Lưu ý rằng:** một Neural Network chỉ có 1 lớp đầu vào và 1 lớp đầu ra nhưng có thể có nhiều các lớp ẩn 
-                3. **Lớp đầu ra (Output Layer)**:  
-                - Lớp này tạo ra kết quả cuối cùng của mạng (dự đoán hoặc phân loại).  
-                - Số lượng nơ-ron trong lớp đầu ra phụ thuộc vào loại bài toán:  
-                    - **Phân loại nhị phân**: 1 nơ-ron (ví dụ: dùng hàm Sigmoid).  
-                    - **Phân loại đa lớp**: Số nơ-ron bằng số lớp (ví dụ: dùng hàm Softmax).  
-                    - **Hồi quy**: 1 hoặc nhiều nơ-ron tùy theo số lượng giá trị cần dự đoán.
-                """
-            )
-            st.image("image2.png", caption="Cấu trúc Neural Network có 2 hoặc nhiều lớp ẩn (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
-            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image2.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
-
-            st.markdown("---")
-            st.markdown("### Các bước huấn luyện Neural Network")
-            st.write("1. **Khởi tạo mô hình**: Xác định số lớp ẩn, số nơ-ron trong mỗi lớp, và hàm kích hoạt.")
-            st.write("2. **Chuẩn hóa dữ liệu**: Đưa dữ liệu về dạng chuẩn để tăng hiệu quả huấn luyện.")
-            st.write("3. **Lan truyền xuôi (Forward Propagation)**: Tính toán đầu ra từ đầu vào qua các lớp.")
-            st.write("4. **Lan truyền ngược (Backpropagation)**: Cập nhật trọng số dựa trên hàm mất mát.")
-            st.write("5. **Dự đoán**: Sử dụng mô hình đã huấn luyện để dự đoán trên dữ liệu mới.")
-            st.markdown("---")
-            st.markdown("### Các hàm kích hoạt trong Neural Network")
-            # Hàm Sigmoid
-            st.markdown("**1. Hàm Sigmoid:**")
-            st.latex(r"f(x) = \frac{1}{1 + e^{-x}}")
-            st.markdown(
-                """
-                - **Trong đó:**
-                    - $$e^x$$ và $$e^{-x}$$: là hàm mũ với cơ số $$e$$ và số mũ $$x$$ hoặc $$-x$$
-                    - $$( x )$$: Giá trị đầu vào của nơ-ron (tổng có trọng số cộng với bias).  
-                    - $$(( f(x) )$$: Đầu ra của hàm Sigmoid, nằm trong khoảng $$(((0, 1))$$.  
-                """
-            )
-            st.image("image3.png", caption="Biểu đồ hàm Sigmoid (Nguồn:https://byvn.net/qW4e)", use_container_width=True)
-            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image3.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
-
-            # Hàm Tanh
-            st.markdown("**2. Hàm Hyperbolic Tangent (Tanh):**")
-            st.latex(r"f(x) = \tanh(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}")
-            st.markdown(
-                """
-                - **Trong đó:**
-                    - $$( x )$$: Giá trị đầu vào của nơ-ron.  
-                    - $$(( f(x) )$$: Đầu ra của hàm Tanh, nằm trong khoảng $$(((-1 , 1))$$.  
-
-                """
-            )
-            st.image("image4.png", caption="Biểu đồ hàm Hyperbolic Tangent (Tanh) (Nguồn:https://byvn.net/qW4e)", use_container_width=True)
-            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image4.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
-
-            # Hàm ReLU
-            st.markdown("**3. Hàm ReLU (Rectified Linear Unit):**")
-            st.latex(r"f(x) = \max(0, x)")
-            st.markdown(
-                """
-                - **Trong đó:**
-                    - $$( x )$$: Giá trị đầu vào của nơ-ron.  
-                    - $$(( f(x) )$$: Đầu ra của hàm ReLU, bằng 0 nếu $$( x < 0 )$$, bằng $$( x )$$ nếu $$( x \geq 0 )$$.  
-                """
-            )
-            st.image("image5.png", caption="Biểu đồ hàm ReLU (Rectified Linear Unit)(Nguồn:https://byvn.net/qW4e)", use_container_width=True)
-            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image5.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
-
-            # Hàm Softmax
-            st.markdown("**5. Hàm Softmax:**")
-            st.latex(r"f(x_i) = \frac{e^{z_i}}{\sum_{j=1}^{N} e^{z_j}}")
-            st.markdown(
-                """
-                - **Trong đó:**
-                    - $$( x_i )$$: Giá trị đầu vào của nơ-ron thứ $$( i )$$.  
-                    - $$( N )$$: Số lượng nơ-ron trong lớp đầu ra (tương ứng với số lớp trong bài toán phân loại).  
-                    - $$( f(x_i) )$$: Đầu ra của hàm Softmax, nằm trong khoảng $$((0, 1))$$ và tổng các đầu ra bằng 1.  
-               
-                """
-            )
-            st.image("image6.png", caption="Biểu đồ hàm Softmax (Rectified Linear Unit)(Nguồn:https://byvn.net/yvvj)", use_container_width=True)
-            # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image6.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
-
-            st.markdown("---")
-            st.markdown("### Công thức toán học")
-            st.markdown("**1. Lan truyền xuôi (Forward Propagation):**")
-            st.latex(r"h_l = f(W_l h_{l-1} + b_l)")
-            st.markdown(
+                st.markdown("---")
+                st.markdown("### Các bước huấn luyện Neural Network")
+                st.write("1. **Khởi tạo mô hình**: Xác định số lớp ẩn, số nơ-ron trong mỗi lớp, và hàm kích hoạt.")
+                st.write("2. **Chuẩn hóa dữ liệu**: Đưa dữ liệu về dạng chuẩn để tăng hiệu quả huấn luyện.")
+                st.write("3. **Lan truyền xuôi (Forward Propagation)**: Tính toán đầu ra từ đầu vào qua các lớp.")
+                st.write("4. **Lan truyền ngược (Backpropagation)**: Cập nhật trọng số dựa trên hàm mất mát.")
+                st.write("5. **Dự đoán**: Sử dụng mô hình đã huấn luyện để dự đoán trên dữ liệu mới.")
+                st.markdown("---")
+                st.markdown("### Các hàm kích hoạt trong Neural Network")
+                # Hàm Sigmoid
+                st.markdown("**1. Hàm Sigmoid:**")
+                st.latex(r"f(x) = \frac{1}{1 + e^{-x}}")
+                st.markdown(
                     """
                     - **Trong đó:**
-                    - $$( h_l )$$: Đầu ra của lớp $$( l )$$.  
-                    - $$( W_l )$$: Ma trận trọng số của lớp $$( l )$$.  
-                    - $$( h_{l-1} )$$: Đầu ra của lớp trước đó (hoặc dữ liệu đầu vào nếu là lớp đầu tiên).  
-                    - $$( b_l )$$: Vector bias của lớp $$( l )$$.  
-                    - $$( f )$$: Hàm kích hoạt (ví dụ: ReLU, Sigmoid, Tanh).
+                        - $$e^x$$ và $$e^{-x}$$: là hàm mũ với cơ số $$e$$ và số mũ $$x$$ hoặc $$-x$$
+                        - $$( x )$$: Giá trị đầu vào của nơ-ron (tổng có trọng số cộng với bias).  
+                        - $$(( f(x) )$$: Đầu ra của hàm Sigmoid, nằm trong khoảng $$(((0, 1))$$.  
                     """
-            )
-            st.markdown("**2. Hàm mất mát (Loss Function) - Cross-Entropy cho phân loại:**")
-            st.latex(r"L = -\frac{1}{N} \sum_{i=1}^{N} [y_i \log(\hat{y}_i) + (1 - y_i) \log(1 - \hat{y}_i)]")
-            st.markdown(
+                )
+                st.image("image3.png", caption="Biểu đồ hàm Sigmoid (Nguồn:https://byvn.net/qW4e)", use_container_width=True)
+                # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image3.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+
+                # Hàm Tanh
+                st.markdown("**2. Hàm Hyperbolic Tangent (Tanh):**")
+                st.latex(r"f(x) = \tanh(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}")
+                st.markdown(
                     """
                     - **Trong đó:**
-                    - $$( y_i )$$: Nhãn thực tế của mẫu $$( i )$$ (0 hoặc 1).  
-                    - $$( \hat{y}_i )$$: Dự đoán của mô hình cho mẫu $$( i )$$ (xác suất từ 0 đến 1).  
-                    - $$( N )$$: Số mẫu.
-                    """
-            )
-            st.markdown("**3. Lan truyền ngược (Backpropagation) - Cập nhật trọng số:**")
-            st.latex(r"W_l = W_l - \eta \frac{\partial L}{\partial W_l}")
-            st.markdown(
-                r"""
-                - **Trong đó:**
-                - $$\eta$$: Tốc độ học (learning rate).  
-                - $$\frac{\partial L}{\partial W_l}$$: Đạo hàm của hàm mất mát theo trọng số $$W_l$$.
-                """
-            )
-            st.markdown("---")
-            st.markdown("### Ưu điểm & Nhược điểm của Neural Network")
-            st.table({
-                    "**Ưu điểm**": [
-                        "Học được các đặc trưng phi tuyến tính phức tạp.",
-                        "Linh hoạt với nhiều loại dữ liệu và bài toán.",
-                        "Hiệu quả cao với dữ liệu lớn khi được tối ưu tốt."
-                    ],
-                    "**Nhược điểm**": [
-                        "Yêu cầu lượng dữ liệu lớn để huấn luyện.",
-                        "Tốn tài nguyên tính toán.",
-                        "Khó diễn giải kết quả."
-                    ]
-            })
+                        - $$( x )$$: Giá trị đầu vào của nơ-ron.  
+                        - $$(( f(x) )$$: Đầu ra của hàm Tanh, nằm trong khoảng $$(((-1 , 1))$$.  
 
+                    """
+                )
+                st.image("image4.png", caption="Biểu đồ hàm Hyperbolic Tangent (Tanh) (Nguồn:https://byvn.net/qW4e)", use_container_width=True)
+                # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image4.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+
+                # Hàm ReLU
+                st.markdown("**3. Hàm ReLU (Rectified Linear Unit):**")
+                st.latex(r"f(x) = \max(0, x)")
+                st.markdown(
+                    """
+                    - **Trong đó:**
+                        - $$( x )$$: Giá trị đầu vào của nơ-ron.  
+                        - $$(( f(x) )$$: Đầu ra của hàm ReLU, bằng 0 nếu $$( x < 0 )$$, bằng $$( x )$$ nếu $$( x \geq 0 )$$.  
+                    """
+                )
+                st.image("image5.png", caption="Biểu đồ hàm ReLU (Rectified Linear Unit)(Nguồn:https://byvn.net/qW4e)", use_container_width=True)
+                # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image5.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+
+                # Hàm Softmax
+                st.markdown("**5. Hàm Softmax:**")
+                st.latex(r"f(x_i) = \frac{e^{z_i}}{\sum_{j=1}^{N} e^{z_j}}")
+                st.markdown(
+                    """
+                    - **Trong đó:**
+                        - $$( x_i )$$: Giá trị đầu vào của nơ-ron thứ $$( i )$$.  
+                        - $$( N )$$: Số lượng nơ-ron trong lớp đầu ra (tương ứng với số lớp trong bài toán phân loại).  
+                        - $$( f(x_i) )$$: Đầu ra của hàm Softmax, nằm trong khoảng $$((0, 1))$$ và tổng các đầu ra bằng 1.  
+                
+                    """
+                )
+                st.image("image6.png", caption="Biểu đồ hàm Softmax (Rectified Linear Unit)(Nguồn:https://byvn.net/yvvj)", use_container_width=True)
+                # st.image(r"C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App\image6.png", caption="Cấu trúc Neural Network (Nguồn:https://byvn.net/m3Sf)", use_container_width=True)
+                st.markdown("---")
+                st.markdown(
+                    """
+                    ### Giải thích vai trò của hàm kích hoạt (Activation Function)
+                    Hàm kích hoạt:
+                    - **Tính phi tuyến:** Giúp mạng nơ-ron học các mối quan hệ phức tạp.  
+                    - **Điều chỉnh đầu ra:** Giới hạn giá trị (VD: Sigmoid: (0, 1), Tanh: (-1, 1), ReLU: ≥0).  
+                    - **Hỗ trợ học:** Cung cấp đạo hàm cho lan truyền ngược, tối ưu hóa mô hình.  
+                    - **Kích hoạt nơ-ron:** Quyết định nơ-ron hoạt động (VD: ReLU loại giá trị âm).  
+                    - **Cải thiện hiệu suất:** Giảm vấn đề vanishing gradient, tăng tốc huấn luyện.  
+                    Là yếu tố cốt lõi giúp mạng nơ-ron linh hoạt và mạnh mẽ.
+                    """
+                )
+                st.markdown(
+                    """
+                    ### Vai trò của hàm kích hoạt và liên hệ với công thức
+                    Hàm kích hoạt biến đổi đầu vào $$x$$ thành đầu ra $$f(x)$$:  
+                    - **Sigmoid $$f(x) = \\frac{1}{1 + e^{-x}}$$:** Đưa $$x$$ vào (0, 1), thêm tính phi tuyến cho phân loại nhị phân.  
+
+                    - **Tanh $$f(x) = \\frac{e^x - e^{-x}}{e^x + e^{-x}}$$:** Chuẩn hóa $$x$$ vào (-1, 1), cân bằng giá trị âm/dương.  
+
+                    - **ReLU $$f(x) = \\max(0, x)$$:** Loại giá trị âm, tăng thưa thớt, giảm gradient biến mất.  
+
+                    - **Softmax $$f(x_i) = \\frac{e^{z_i}}{\\sum e^{z_j}}$$:** Chuẩn hóa $$x_i$$ thành xác suất (0, 1), tổng bằng 1, cho phân loại đa lớp.  
+                    Công thức quyết định cách $$x$$ được biến đổi, hỗ trợ học phi tuyến và tối ưu hóa.
+                    """,
+                    unsafe_allow_html=True  # Cho phép Streamlit render LaTeX
+                )
+                st.markdown("---")
+                st.markdown("### Công thức toán học")
+                st.markdown("**1. Lan truyền xuôi (Forward Propagation):**")
+                st.latex(r"h_l = f(W_l h_{l-1} + b_l)")
+                st.markdown(
+                        """
+                        - **Trong đó:**
+                        - $$( h_l )$$: Đầu ra của lớp $$( l )$$.  
+                        - $$( W_l )$$: Ma trận trọng số của lớp $$( l )$$.  
+                        - $$( h_{l-1} )$$: Đầu ra của lớp trước đó (hoặc dữ liệu đầu vào nếu là lớp đầu tiên).  
+                        - $$( b_l )$$: Vector bias của lớp $$( l )$$.  
+                        - $$( f )$$: Hàm kích hoạt (ví dụ: ReLU, Sigmoid, Tanh).
+                        """
+                )
+                st.markdown("**2. Hàm mất mát (Loss Function) - Cross-Entropy cho phân loại:**")
+                st.latex(r"L = -\frac{1}{N} \sum_{i=1}^{N} [y_i \log(\hat{y}_i) + (1 - y_i) \log(1 - \hat{y}_i)]")
+                st.markdown(
+                        """
+                        - **Trong đó:**
+                        - $$( y_i )$$: Nhãn thực tế của mẫu $$( i )$$ (0 hoặc 1).  
+                        - $$( \hat{y}_i )$$: Dự đoán của mô hình cho mẫu $$( i )$$ (xác suất từ 0 đến 1).  
+                        - $$( N )$$: Số mẫu.
+                        """
+                )
+                st.markdown("**3. Lan truyền ngược (Backpropagation) - Cập nhật trọng số:**")
+                st.latex(r"W_l = W_l - \eta \frac{\partial L}{\partial W_l}")
+                st.markdown(
+                    r"""
+                    - **Trong đó:**
+                    - $$\eta$$: Tốc độ học (learning rate).  
+                    - $$\frac{\partial L}{\partial W_l}$$: Đạo hàm của hàm mất mát theo trọng số $$W_l$$.
+                    """
+                )
+                st.markdown("---")
+                st.markdown("### Ưu điểm & Nhược điểm của Neural Network")
+                st.table({
+                        "**Ưu điểm**": [
+                            "Học được các đặc trưng phi tuyến tính phức tạp.",
+                            "Linh hoạt với nhiều loại dữ liệu và bài toán.",
+                            "Hiệu quả cao với dữ liệu lớn khi được tối ưu tốt."
+                        ],
+                        "**Nhược điểm**": [
+                            "Yêu cầu lượng dữ liệu lớn để huấn luyện.",
+                            "Tốn tài nguyên tính toán.",
+                            "Khó diễn giải kết quả."
+                        ]
+                })
+            elif model_option == "Pseudo Labelling (Gắn nhãn Giả)":
+                st.markdown("## 🔹 Pseudo Labelling (Gắn nhãn Giả)")
+                st.markdown("---")
+                st.markdown("### Khái niệm Pseudo Labelling")
+                st.markdown(
+                        """
+                        - **Pseudo Labelling (Gắn nhãn Giả)** là một kỹ thuật học bán giám sát **(semi-supervised learning)** nhằm tận dụng dữ liệu chưa được gắn nhãn **(unlabeled data)** để cải thiện hiệu suất mô hình học máy.  
+                        - Ý tưởng chính là sử dụng mô hình đã được huấn luyện trên dữ liệu có nhãn **(labeled data)** để dự đoán nhãn cho dữ liệu chưa có nhãn, sau đó sử dụng các nhãn giả **(pseudo-labels)** này để huấn luyện lại mô hình.  
+                        - Kỹ thuật này đặc biệt hữu ích khi lượng dữ liệu có nhãn ít, nhưng dữ liệu chưa có nhãn lại dồi dào.
+                        """
+                )
+                # st.image("pseudo_label_diagram.png", caption="Quy trình Pseudo Labelling (Nguồn: Tự tạo hoặc tham khảo từ tài liệu học thuật)", use_container_width=True)
+
+                st.markdown("---")
+                st.markdown("### Quy trình Pseudo Labelling")
+                st.markdown(
+                    """
+                    1. **Huấn luyện mô hình với dữ liệu có nhãn (labeled data):**  
+                        - Ở phần trên cùng, bạn thấy một tập dữ liệu có nhãn (**labeled data**) được biểu thị bằng các chấm tròn màu xanh và đỏ (mỗi màu đại diện cho một lớp khác nhau).  
+                        - Dữ liệu này được sử dụng để huấn luyện một mô hình ban đầu (**Model**).  
+                        - Mũi tên màu đỏ từ "labeled data" đến "Model" thể hiện quá trình huấn luyện mô hình bằng dữ liệu có nhãn.  
+
+                    2. **Sử dụng mô hình đã huấn luyện để dự đoán nhãn cho dữ liệu chưa có nhãn (unlabeled data):**  
+                        - Bên dưới tập dữ liệu có nhãn là tập dữ liệu chưa có nhãn (**unlabeled data**), được biểu thị bằng các chấm tròn màu xám (chưa được phân loại).  
+                        - Mô hình đã huấn luyện ở bước 1 được sử dụng để dự đoán nhãn cho tập dữ liệu chưa có nhãn này.  
+                        - Kết quả là tập dữ liệu **pseudo-labeled data** (dữ liệu được gắn nhãn giả), được biểu thị bằng các chấm tròn màu xanh và đỏ tương tự dữ liệu có nhãn ban đầu.  
+                        - Mũi tên từ "unlabeled data" đến "Model" và sau đó đến "pseudo-labeled data" thể hiện quá trình này.  
+
+                    3. **Huấn luyện lại mô hình với cả dữ liệu có nhãn và dữ liệu được gắn nhãn giả:**  
+                        - Sau khi có tập dữ liệu **pseudo-labeled**, nó được kết hợp với tập dữ liệu có nhãn ban đầu (**labeled data**).  
+                        - Cả hai tập dữ liệu này (**labeled data** và **pseudo-labeled data**) được sử dụng để huấn luyện lại mô hình (**Model**).  
+                        - Mũi tên từ cả hai tập dữ liệu (**labeled data** và **pseudo-labeled data**) đến "Model" ở dưới cùng thể hiện bước huấn luyện lại này.
+                    """
+                )
+                st.image("image7.png", caption="Quy trình cơ bản của Pseudo Labelling (Nguồn: https://byvn.net/dJoE)", use_container_width=True)
+
+                st.markdown("---")
+                st.markdown("### Công thức toán học")
+                st.markdown("**1. Dự đoán nhãn giả:**")
+                st.latex(r"\hat{y}_u = \arg\max_{y} P(y|x_u; \theta)")
+                st.markdown(
+                        """
+                        - **Trong đó:**
+                        - $$x_u$$: Dữ liệu chưa có nhãn (unlabeled data).  
+                        - $$\hat{y}_u$$: Nhãn giả được dự đoán cho $$x_u$$.  
+                        - $$P(y|x_u;\theta)$$: Xác suất dự đoán của mô hình với tham số $$\theta$$.  
+                        - $$ arg\max$$: Lấy nhãn có xác suất cao nhất.
+                        """
+                )
+                st.markdown("**2. Hàm mất mát kết hợp:**")
+                st.latex(r"L = L_l + \alpha L_u")
+                st.markdown(
+                        """
+                        - **Trong đó:**
+                        - $$L_l$$: Hàm mất mát trên dữ liệu có nhãn (labeled data), ví dụ: Cross-Entropy.  
+                        - $$L_u$$: Hàm mất mát trên dữ liệu có nhãn giả (pseudo-labeled data).  
+                        - $$alpha$$: Hệ số cân bằng giữa hai thành phần mất mát (thường được điều chỉnh trong khoảng [0, 1]).
+                        """
+                )
+
+                st.markdown("---")
+                st.markdown("### Ưu điểm & Nhược điểm của Pseudo Labelling")
+                st.table({
+                        "**Ưu điểm**": [
+                            "Tận dụng được dữ liệu chưa có nhãn, giảm chi phí gắn nhãn thủ công.",
+                            "Cải thiện hiệu suất mô hình khi dữ liệu có nhãn bị hạn chế.",
+                            "Dễ triển khai và kết hợp với các mô hình học máy khác."
+                        ],
+                        "**Nhược điểm**": [
+                            "Nhãn giả có thể chứa sai sót, ảnh hưởng đến chất lượng mô hình.",
+                            "Hiệu quả phụ thuộc vào độ chính xác của mô hình ban đầu.",
+                            "Cần điều chỉnh cẩn thận tham số (ví dụ: $$alpha$$) để tránh overfitting."
+                        ]
+                })
     with tab_samples:
         with st.expander("**Phân chia dữ liệu**", expanded=True):    
             if "train_images" in st.session_state:
@@ -402,7 +505,7 @@ def run_NeuralNetwork_app():
 
                 activation_function = st.selectbox(
                     "🔹 Hàm kích hoạt cho các lớp ẩn",
-                    options=['relu', 'sigmoid', 'tanh'],
+                    options=['relu', 'sigmoid', 'tanh', 'softmax'],
                     index=0,
                     key="activation_function"
                 )
@@ -415,7 +518,7 @@ def run_NeuralNetwork_app():
                     index=0,
                     key="optimizer"
                 )
-                learning_rate = st.slider(
+                learning_rate = st.number_input(
                     "🔹 Learning Rate (Tốc độ học)",
                     min_value=0.0001,
                     max_value=0.1,
@@ -426,13 +529,21 @@ def run_NeuralNetwork_app():
                 )
                 st.write(f"**Learning Rate được chọn:** {learning_rate}")
 
+                # Thêm phần đặt tên mô hình
+                model_name = st.text_input(
+                    "🔹 Tên mô hình",
+                    value="My_Neural_Network",
+                    key="model_name"
+                )
+                st.write(f"**Tên mô hình:** {model_name}")
+
                 # Khởi tạo trạng thái nếu chưa có
                 if 'training_completed' not in st.session_state:
                     st.session_state['training_completed'] = False
 
                 # Chỉ huấn luyện khi nhấn nút
                 if st.button("🚀 Bắt đầu huấn luyện", key="train_button"):
-                    with st.spinner("Đang huấn luyện mô hình..."):
+                    with st.spinner(f"Đang huấn luyện mô hình '{model_name}'..."):
                         # Xây dựng mô hình
                         model = models.Sequential()
                         model.add(layers.Input(shape=(input_shape,)))
@@ -455,7 +566,7 @@ def run_NeuralNetwork_app():
                                     loss='sparse_categorical_crossentropy',
                                     metrics=['accuracy'])
 
-                        with mlflow.start_run():
+                        with mlflow.start_run(run_name=model_name):
                             progress_bar = st.progress(0)
                             status_text = st.empty()
                             start_time = time.time()
@@ -489,8 +600,31 @@ def run_NeuralNetwork_app():
                             train_loss, train_accuracy = model.evaluate(X_train, y_train, verbose=0)
                             val_loss, val_accuracy = model.evaluate(X_val, y_val, verbose=0)
                             total_params = model.count_params()
+                            num_samples = 5
+                            sample_indices = np.random.choice(len(X_train), num_samples, replace=False)
+                            sample_images = X_train[sample_indices]  # Dữ liệu đã chuẩn hóa
+                            sample_labels = y_train[sample_indices]
+                            if 'trained_models' not in st.session_state:
+                                st.session_state['trained_models'] = []
+                            
+                            st.session_state['trained_models'].append({
+                                'name': model_name,
+                                'model': model,
+                                'test_accuracy': test_accuracy,
+                                'val_accuracy': val_accuracy,
+                                'train_accuracy': train_accuracy,
+                                'test_loss': test_loss,
+                                'val_loss': val_loss,
+                                'train_loss': train_loss,
+                                'total_time': total_time,
+                                'time_callback': time_callback,
+                                'total_params': total_params,
+                                'sample_images': sample_images,  # Lưu ảnh mẫu
+                                'sample_labels': sample_labels   # Lưu nhãn mẫu
+                            })
 
-                            # Lưu tất cả vào session_state
+                            st.session_state['training_completed'] = True
+                            # Lưu tất cả vào session_state (không gán lại model_name)
                             st.session_state['trained_model'] = model
                             st.session_state['history'] = history
                             st.session_state['test_accuracy'] = test_accuracy
@@ -516,6 +650,7 @@ def run_NeuralNetwork_app():
                             mlflow.log_param("input_shape", input_shape)
                             mlflow.log_param("total_params", total_params)
                             mlflow.log_param("dropout_rate", 0.2)
+                            mlflow.log_param("model_name", model_name)
 
                             mlflow.log_metric("train_accuracy", train_accuracy)
                             mlflow.log_metric("val_accuracy", val_accuracy)
@@ -524,7 +659,7 @@ def run_NeuralNetwork_app():
                             mlflow.log_metric("val_loss", val_loss)
                             mlflow.log_metric("test_loss", test_loss)
                             mlflow.log_metric("total_training_time", total_time)
-                            mlflow.log_metric("avg_epoch_time", np.mean(time_callback.times))   
+                            mlflow.log_metric("avg_epoch_time", np.mean(time_callback.times))
 
                 # Hiển thị kết quả nếu huấn luyện đã hoàn tất
                 if st.session_state['training_completed']:
@@ -540,11 +675,12 @@ def run_NeuralNetwork_app():
                     time_callback = st.session_state['time_callback']
                     total_params = st.session_state['total_params']
 
-                    st.success("✅ Huấn luyện hoàn tất!")
+                    st.success(f"✅ Huấn luyện mô hình '{model_name}' hoàn tất!")
                     st.write("#### ✅ **Thông tin mô hình và kết quả huấn luyện**")
 
                     # Kiến trúc mô hình
                     st.write("**1. Kiến trúc mô hình:**")
+                    st.write(f" - Tên mô hình: {model_name}")
                     st.write(f" - Số lớp ẩn: {num_hidden_layers}")
                     st.write(f" - Số nơ-ron: {hidden_layer_neurons}")
                     st.write(f" - Hàm kích hoạt: {activation_function}")
@@ -564,7 +700,6 @@ def run_NeuralNetwork_app():
                     st.write("**4. Kết quả Loss & Accuracy:**")
                     st.write(f"- **Validation Accuracy**: {val_accuracy:.4f}")
                     st.write(f"- **Test Accuracy**: {test_accuracy:.4f}")
-                    
 
                     # Thời gian huấn luyện
                     st.write("**5. Thời gian huấn luyện:**")
@@ -579,7 +714,7 @@ def run_NeuralNetwork_app():
                     ax.plot(history.history['val_loss'], label='Validation Loss', marker='s', linestyle='--')
                     ax.set_xlabel("Epochs")
                     ax.set_ylabel("Loss")
-                    ax.set_title("Training & Validation Loss")
+                    ax.set_title(f"Training & Validation Loss - {model_name}")
                     ax.legend()
                     ax.grid(True)
                     st.pyplot(fig)
@@ -597,7 +732,7 @@ def run_NeuralNetwork_app():
                     ax.plot(history.history['val_accuracy'], label='Validation Accuracy', marker='s', linestyle='--')
                     ax.set_xlabel("Epochs")
                     ax.set_ylabel("Accuracy")
-                    ax.set_title("Training & Validation Accuracy")
+                    ax.set_title(f"Training & Validation Accuracy - {model_name}")
                     ax.legend()
                     ax.grid(True)
                     st.pyplot(fig)
@@ -616,49 +751,51 @@ def run_NeuralNetwork_app():
         st.header("Dự đoán số viết tay")
         st.write("Chọn cách nhập liệu: tải lên hình ảnh hoặc vẽ trực tiếp.")
 
-        if 'trained_model' not in st.session_state:
-            st.warning("⚠️ Vui lòng huấn luyện mô hình trước trong tab 'Huấn luyện'!")
+        if 'trained_models' not in st.session_state or not st.session_state['trained_models']:
+            st.warning("⚠️ Vui lòng huấn luyện ít nhất một mô hình trong tab 'Huấn luyện'!")
         else:
-            model = st.session_state['trained_model']
+            # Lấy danh sách tên mô hình
+            model_names = [m['name'] for m in st.session_state['trained_models']]
+            
+            # Chọn mô hình
+            selected_model_name = st.selectbox(
+                "Chọn mô hình đã huấn luyện",
+                options=model_names,
+                key="select_model"
+            )
+            
+            # Lấy thông tin mô hình được chọn
+            selected_model_info = next(m for m in st.session_state['trained_models'] if m['name'] == selected_model_name)
+            selected_model = selected_model_info['model']
+            
+            st.write(f"**Mô hình đã chọn:** {selected_model_name}")
+            st.write(f"**Test Accuracy:** {selected_model_info['test_accuracy']:.4f}")
 
-            input_method = st.selectbox("Chọn phương thức nhập liệu", ["Vẽ trực tiếp", "Tải ảnh lên"])
+            # Hiển thị ảnh mẫu từ tập huấn luyện
+            st.subheader("Ảnh mẫu từ tập huấn luyện")
+            if 'sample_images' in selected_model_info and 'sample_labels' in selected_model_info:
+                sample_images = selected_model_info['sample_images']
+                sample_labels = selected_model_info['sample_labels']
+                
+                # Dự đoán trên ảnh mẫu
+                sample_predictions = selected_model.predict(sample_images, verbose=0)
+                predicted_classes = np.argmax(sample_predictions, axis=1)
+                confidences = [sample_predictions[i][predicted_classes[i]] for i in range(len(predicted_classes))]
 
-            if input_method == "Vẽ trực tiếp":
-                canvas_result = st_canvas(
-                    fill_color="rgba(255, 165, 0, 0.3)",
-                    stroke_width=20,
-                    stroke_color="#FFFFFF",
-                    background_color="#000000",
-                    height=280,
-                    width=280,
-                    drawing_mode="freedraw",
-                    key="canvas"
-                )
+                # Hiển thị ảnh mẫu trong các cột
+                cols = st.columns(5)  # Hiển thị 5 ảnh trong 5 cột
+                for i, col in enumerate(cols):
+                    with col:
+                        # Chuyển dữ liệu chuẩn hóa về dạng ảnh (0-255)
+                        img = (sample_images[i] * 255).reshape(28, 28).astype(np.uint8)
+                        st.image(img, width=100, caption=f"Thực tế: {sample_labels[i]}\nDự đoán: {predicted_classes[i]} ({confidences[i]:.4f})")
+            else:
+                st.info("Không có ảnh mẫu nào được lưu cho mô hình này.")
 
-                # Chỉ dự đoán khi người dùng nhấn nút
-                if canvas_result.image_data is not None:
-                    image = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
-                    image = image.convert('L')
-                    image = image.resize((28, 28))
-                    st.image(image, caption="Hình ảnh bạn vẽ (resize 28x28)", width=100)
-
-                    if st.button("Dự đoán", key="predict_button"):
-                        image_array = np.array(image, dtype=np.float32) / 255.0
-                        image_array = image_array.reshape(1, 784)
-
-                        image_tensor = tf.convert_to_tensor(image_array, dtype=tf.float32)
-                        prediction = model.predict(image_tensor, verbose=0)
-                        predicted_class = np.argmax(prediction[0])
-                        confidence = prediction[0][predicted_class]
-
-                        st.write(f"**Dự đoán:** {predicted_class}")
-                        st.write(f"**Xác suất:** {confidence:.4f}")
-
-                    if st.button("Xóa và vẽ lại", key="clear_button"):
-                        st.session_state.pop("canvas")
-                        st.rerun()
-
-            elif input_method == "Tải ảnh lên":
+            # Chọn phương thức nhập liệu
+            input_method = st.selectbox("Chọn phương thức nhập liệu", ["Tải ảnh lên", "Vẽ trực tiếp"])
+            
+            if input_method == "Tải ảnh lên":
                 uploaded_file = st.file_uploader("Tải lên hình ảnh", type=["png", "jpg", "jpeg"])
                 if uploaded_file is not None:
                     image = Image.open(uploaded_file).convert('L')
@@ -670,11 +807,41 @@ def run_NeuralNetwork_app():
                         image_array = image_array.reshape(1, 784)
 
                         image_tensor = tf.convert_to_tensor(image_array, dtype=tf.float32)
-                        prediction = model.predict(image_tensor, verbose=0)
+                        prediction = selected_model.predict(image_tensor, verbose=0)
                         predicted_class = np.argmax(prediction[0])
                         confidence = prediction[0][predicted_class]
 
                         st.write(f"**Dự đoán:** {predicted_class} (Xác suất: {confidence:.4f})")
+            
+            elif input_method == "Vẽ trực tiếp":
+                canvas_result = st_canvas(
+                    fill_color="rgba(255, 165, 0, 0.3)",
+                    stroke_width=20,
+                    stroke_color="#FFFFFF",
+                    background_color="#000000",
+                    height=280,
+                    width=280,
+                    drawing_mode="freedraw",
+                    key="canvas"
+                )
+
+                if canvas_result.image_data is not None:
+                    image = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
+                    image = image.convert('L')
+                    image = image.resize((28, 28))
+                    st.image(image, caption="Hình ảnh bạn vẽ (resize 28x28)", width=100)
+
+                    if st.button("Dự đoán", key="predict_button"):
+                        image_array = np.array(image, dtype=np.float32) / 255.0
+                        image_array = image_array.reshape(1, 784)
+
+                        image_tensor = tf.convert_to_tensor(image_array, dtype=tf.float32)
+                        prediction = selected_model.predict(image_tensor, verbose=0)
+                        predicted_class = np.argmax(prediction[0])
+                        confidence = prediction[0][predicted_class]
+
+                        st.write(f"**Dự đoán:** {predicted_class}")
+                        st.write(f"**Xác suất:** {confidence:.4f}")
 
 
     with tab_mlflow:
