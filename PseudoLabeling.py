@@ -96,7 +96,7 @@ def run_PseudoLabeling_app():
     st.session_state.y_test = y_test
 
     # Giao diện Streamlit
-    st.title("📸 MNIST Neural NetWork")
+    st.title("📸 PseudoLabeling Neural NetWork")
     tabs = st.tabs([
             "Thông tin",
             "Tập dữ liệu",
