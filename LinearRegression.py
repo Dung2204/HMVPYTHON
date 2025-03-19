@@ -428,6 +428,7 @@ def run_LinearRegression_app():
                     model_choice_to_train = st.selectbox("Chọn mô hình để huấn luyện:", 
                                                         ["Hồi quy đa biến (Multiple Regression) ", "Hồi quy đa thức (Polynomial Regression) "])
                 
+                # 2) Cấu hình tham số mô hình
                 col_lr, col_lr_tip = st.columns([0.8, 0.2])
                 with col_lr:
                     lr_method = "constant"  # Gán cố định giá trị "constant"
@@ -437,17 +438,41 @@ def run_LinearRegression_app():
                     eta0 = st.number_input("Chọn tốc độ học (learning rate):", 
                             value=0.01, min_value=0.0001, max_value=1.0, 
                             step=0.0001, format="%.4f")
+                
                 poly_degree = 1
                 if model_choice_to_train == "Hồi quy đa thức (Polynomial Regression) ":
                     col_poly, col_poly_tip = st.columns([0.8, 0.2])
                     with col_poly:
                         poly_degree = st.number_input("Chọn bậc của đa thức:", 
                                                     min_value=1, max_value=10, value=2)
+                
                 col_fold, col_fold_tip = st.columns([0.8, 0.2])
                 with col_fold:
                     num_folds = st.number_input("Chọn số folds (KFold Cross-Validation):", 
                                                 min_value=2, max_value=20, value=5, step=1)
+
+                # 3) Nhập tên mô hình (run_name) - Sử dụng session_state để lưu giá trị
+                col_run_name, col_run_name_tip = st.columns([0.8, 0.2])
+                with col_run_name:
+                    # Tạo tên mặc định
+                    default_run_name = f"{model_choice_to_train}_Run_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
+                    
+                    # Khởi tạo giá trị run_name trong session_state nếu chưa có
+                    if "run_name" not in st.session_state:
+                        st.session_state.run_name = default_run_name
+                    
+                    # Cập nhật giá trị run_name từ input của người dùng
+                    st.session_state.run_name = st.text_input("Đặt tên cho mô hình (model name):", 
+                                                            value=st.session_state.run_name, 
+                                                            key="run_name_input")
+                    
+                    # Lấy run_name từ session_state
+                    run_name = st.session_state.run_name
+                
                 if st.button("Huấn luyện mô hình"):
+                    # Kiểm tra giá trị run_name trước khi huấn luyện
+                    st.write(f"Tên model sẽ sử dụng: {run_name}")
+                    
                     X_train = st.session_state.X_train
                     y_train = st.session_state.y_train
                     X_val = st.session_state.X_val
@@ -460,14 +485,16 @@ def run_LinearRegression_app():
                     progress_bar = st.progress(0)
                     status_text = st.empty()
                     
-                    # Tự động tạo run_name
-                    run_name = f"{model_choice_to_train}_Run_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
+                    # Sử dụng run_name từ session_state
                     with mlflow.start_run(run_name=run_name) as run:
-                            # Tham số cố định của mô hình
+                        # Gán run_name vào tag mlflow.runName để lưu trữ
+                        mlflow.set_tag("mlflow.runName", run_name)
+                        
+                        # Tham số cố định của mô hình
                         max_iter = 1000
                         tol = 1e-3
                             
-                            # Cập nhật các tham số quan trọng vào dictionary
+                        # Cập nhật các tham số quan trọng vào dictionary
                         params = {
                             "model_choice": model_choice_to_train,
                             "learning_rate_method": lr_method,
@@ -485,7 +512,7 @@ def run_LinearRegression_app():
                         if model_choice_to_train == "Hồi quy đa thức (Polynomial Regression) ":
                             params["poly_degree"] = poly_degree
 
-                            # Log các tham số quan trọng
+                        # Log các tham số quan trọng
                         for key, value in params.items():
                             mlflow.log_param(key, value)
 
@@ -507,15 +534,15 @@ def run_LinearRegression_app():
                                     ('sgd', SGDRegressor(learning_rate=lr_method, max_iter=max_iter, tol=tol))
                                 ])
 
-                            # Bước 1: Cross Validation (0% -> 30%)
+                        # Bước 1: Cross Validation (0% -> 30%)
                         status_text.text("Đang thực hiện Cross Validation (0%)...")
                         cv_scores = cross_val_score(model, X_train, y_train, cv=num_folds, scoring='r2')
                         for i in range(31):  # Giả lập tiến độ từ 0% đến 30%
                             progress_bar.progress(i)
                             status_text.text(f"Đang thực hiện Cross Validation ({i}%)...")
-                            time.sleep(0.05)  # Thêm độ trễ nhỏ để người dùng thấy tiến độ
+                            time.sleep(0.05)
                             
-                            # Log thêm các chỉ số phụ quan trọng từ CV
+                        # Log thêm các chỉ số phụ quan trọng từ CV
                         mlflow.log_metric("mean_cv_score", np.mean(cv_scores))
                         mlflow.log_metric("cv_scores_std", np.std(cv_scores))
                         mlflow.log_metric("max_cv_score", np.max(cv_scores))
@@ -526,9 +553,9 @@ def run_LinearRegression_app():
                         for i in range(31, 81):  # Giả lập tiến độ từ 30% đến 80%
                             progress_bar.progress(i)
                             status_text.text(f"Đang huấn luyện mô hình trên tập Train ({i}%)...")
-                            time.sleep(0.05)  # Thêm độ trễ nhỏ để người dùng thấy tiến độ
+                            time.sleep(0.05)
                             
-                            # Bước 3: Dự đoán trên tập Validation và Test (80% -> 95%)
+                        # Bước 3: Dự đoán trên tập Validation và Test (80% -> 95%)
                         status_text.text("Đang đánh giá mô hình trên tập Validation và Test (80%)...")
                         y_pred_val = model.predict(X_val)
                         mse_val = mean_squared_error(y_val, y_pred_val)
@@ -546,7 +573,7 @@ def run_LinearRegression_app():
                             status_text.text(f"Đang đánh giá mô hình trên tập Validation và Test ({i}%)...")
                             time.sleep(0.05)
                             
-                            # Bước 4: Lưu kết quả và hoàn tất (95% -> 100%)
+                        # Bước 4: Lưu kết quả và hoàn tất (95% -> 100%)
                         status_text.text("Đang lưu kết quả và hoàn tất (95%)...")
                         mlflow.log_metric("validation_mse", mse_val)
                         mlflow.log_metric("validation_r2", r2_val)
@@ -556,7 +583,7 @@ def run_LinearRegression_app():
                         mlflow.log_metric("test_accuracy", accuracy_test)
                         mlflow.sklearn.log_model(model, "model")
 
-                            # Lưu thông tin vào session_state
+                        # Lưu thông tin vào session_state
                         st.session_state["run_id"] = run.info.run_id
                         st.session_state["run_name"] = run_name
                         st.session_state["accuracy_val"] = accuracy_val
@@ -569,18 +596,18 @@ def run_LinearRegression_app():
                             status_text.text(f"Đang lưu kết quả và hoàn tất ({i}%)...")
                             time.sleep(0.05)
 
-                        # Hiển thị kết quả
+                    # Hiển thị kết quả
                     results_df = pd.DataFrame({
-                           "Metric": ["Cross Validation Scores (R²)", "Mean CV Score (R²)", "Validation MSE", "Validation R²", "Validation Accuracy", "Test MSE", "Test R²", "Test Accuracy"],
+                        "Metric": ["Cross Validation Scores (R²)", "Mean CV Score (R²)", "Validation MSE", "Validation R²", "Validation Accuracy", "Test MSE", "Test R²", "Test Accuracy"],
                         "Value": [
-                                ', '.join([f"{score:.2e}" for score in cv_scores]),
-                                f"{np.mean(cv_scores):.2e}",
-                                f"{mse_val:.2e}",
-                                f"{r2_val:.2e}",
-                                f"{accuracy_val:.2%}",
-                                f"{mse_test:.2e}",
-                                f"{r2_test:.2e}",
-                                f"{accuracy_test:.2%}"
+                            ', '.join([f"{score:.2e}" for score in cv_scores]),
+                            f"{np.mean(cv_scores):.2e}",
+                            f"{mse_val:.2e}",
+                            f"{r2_val:.2e}",
+                            f"{accuracy_val:.2%}",
+                            f"{mse_test:.2e}",
+                            f"{r2_test:.2e}",
+                            f"{accuracy_test:.2%}"
                         ]
                     })
                     st.markdown("### 📊 Kết quả đánh giá mô hình")
@@ -597,7 +624,6 @@ def run_LinearRegression_app():
                     """)
             else:
                 st.warning("Vui lòng chia tập dữ liệu trước.")
-
     # ---------------- Tab 4: Dự đoán ----------------
     # ---------------- Tab 4: Dự đoán ----------------
     with tab_predict:
@@ -645,7 +671,7 @@ def run_LinearRegression_app():
         try:
             client = MlflowClient()
             experiment_name = "LinearRegression"
-    
+            
             # Kiểm tra nếu experiment đã tồn tại
             experiment = client.get_experiment_by_name(experiment_name)
             if experiment is None:
@@ -654,59 +680,60 @@ def run_LinearRegression_app():
             else:
                 experiment_id = experiment.experiment_id
                 st.info(f"Đang sử dụng experiment ID: {experiment_id}")
-    
+            
             mlflow.set_experiment(experiment_name)
-    
+            
             # Truy vấn các run trong experiment
             runs = client.search_runs(experiment_ids=[experiment_id])
-    
+            
             # 1) Chọn và đổi tên Run Name
             st.subheader("Đổi tên Run")
             if runs:
                 run_options = {run.info.run_id: f"{run.data.tags.get('mlflow.runName', 'Unnamed')} - {run.info.run_id}"
-                               for run in runs}
+                            for run in runs}
                 selected_run_id_for_rename = st.selectbox("Chọn Run để đổi tên:", 
-                                                          options=list(run_options.keys()), 
-                                                          format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 new_run_name = st.text_input("Nhập tên mới cho Run:", 
-                                             value=run_options[selected_run_id_for_rename].split(" - ")[0])
+                                            value=run_options[selected_run_id_for_rename].split(" - ")[0])
                 if st.button("Cập nhật tên Run"):
                     if new_run_name.strip():
                         client.set_tag(selected_run_id_for_rename, "mlflow.runName", new_run_name.strip())
                         st.success(f"Đã cập nhật tên Run thành: {new_run_name.strip()}")
+                        st.experimental_rerun()  # Làm mới giao diện để cập nhật
                     else:
                         st.warning("Vui lòng nhập tên mới cho Run.")
             else:
                 st.info("Chưa có Run nào được log.")
-    
+            
             # 2) Xóa Run
             st.subheader("Danh sách Run")
             if runs:
                 selected_run_id_to_delete = st.selectbox("", 
-                                                         options=list(run_options.keys()), 
-                                                         format_func=lambda x: run_options[x])
+                                                        options=list(run_options.keys()), 
+                                                        format_func=lambda x: run_options[x])
                 if st.button("Xóa Run", key="delete_run"):
                     client.delete_run(selected_run_id_to_delete)
                     st.success(f"Đã xóa Run {run_options[selected_run_id_to_delete]} thành công!")
                     st.experimental_rerun()  # Tự động làm mới giao diện
             else:
                 st.info("Chưa có Run nào để xóa.")
-    
+            
             # 3) Danh sách các thí nghiệm
             st.subheader("Danh sách các Run đã log")
             if runs:
                 selected_run_id = st.selectbox("Chọn Run để xem chi tiết:", 
-                                               options=list(run_options.keys()), 
-                                               format_func=lambda x: run_options[x])
-    
+                                            options=list(run_options.keys()), 
+                                            format_func=lambda x: run_options[x])
+                
                 # 4) Hiển thị thông tin chi tiết của Run được chọn
                 selected_run = client.get_run(selected_run_id)
                 st.write(f"**Run ID:** {selected_run_id}")
                 st.write(f"**Run Name:** {selected_run.data.tags.get('mlflow.runName', 'Unnamed')}")
-    
+                
                 st.markdown("### Tham số đã log")
                 st.json(selected_run.data.params)
-    
+                
                 st.markdown("### Chỉ số đã log")
                 metrics = {
                     "Mean CV Score (R²)": selected_run.data.metrics.get("mean_cv_score", "N/A"),
@@ -718,7 +745,7 @@ def run_LinearRegression_app():
                     "Test Accuracy": selected_run.data.metrics.get("test_accuracy", "N/A")
                 }
                 st.json(metrics)
-    
+                
                 # 5) Nút bấm mở MLflow UI
                 st.subheader("Truy cập MLflow UI")
                 mlflow_url = "https://dagshub.com/Dung2204/HMVPython.mlflow"
@@ -726,12 +753,8 @@ def run_LinearRegression_app():
                     st.markdown(f'**[Click để mở MLflow UI]({mlflow_url})**')
             else:
                 st.info("Chưa có Run nào được log. Vui lòng huấn luyện mô hình trước.")
-    
+        
         except Exception as e:
             st.error(f"Không thể kết nối với MLflow: {e}")
-
 if __name__ == "__main__":
     run_LinearRegression_app()
-
-
-    # cd "c:/Users/Dell/OneDrive/Pictures/Documents/Code/python/OpenCV/HMVPYTHON/App" 
