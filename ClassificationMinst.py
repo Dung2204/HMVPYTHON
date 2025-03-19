@@ -502,6 +502,24 @@ def run_ClassificationMinst_app():
             # Lựa chọn mô hình
             model_option = st.radio("🔹 Chọn mô hình huấn luyện:", ("Decision Tree", "SVM"))
             
+            # Thêm phần đặt tên mô hình (run_name)
+            col_run_name, col_run_name_tip = st.columns([0.8, 0.2])
+            with col_run_name:
+                # Tạo tên mặc định
+                default_run_name = f"{model_option}_Run_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
+                
+                # Khởi tạo giá trị run_name trong session_state nếu chưa có
+                if "run_name" not in st.session_state:
+                    st.session_state.run_name = default_run_name
+                
+                # Cập nhật giá trị run_name từ input của người dùng
+                st.session_state.run_name = st.text_input("Đặt tên cho mô hình (run name):", 
+                                                        value=st.session_state.run_name, 
+                                                        key="run_name_input_new")
+                
+                # Lấy run_name từ session_state
+                run_name = st.session_state.run_name
+
             if model_option == "Decision Tree":
                 st.subheader("🌳 Decision Tree Classifier")
                         
@@ -511,7 +529,13 @@ def run_ClassificationMinst_app():
                 n_folds = st.slider("Chọn số folds cho K-Fold Cross-Validation:", min_value=2, max_value=10, value=5)
 
                 if st.button("🚀 Huấn luyện mô hình"):
-                    with mlflow.start_run():
+                    # Kiểm tra giá trị run_name trước khi huấn luyện
+                    st.write(f"Tên run sẽ sử dụng: {run_name}")
+                    
+                    with mlflow.start_run(run_name=run_name):
+                        # Gán run_name vào tag mlflow.runName để lưu trữ
+                        mlflow.set_tag("mlflow.runName", run_name)
+                        
                         # Khởi tạo mô hình Decision Tree
                         dt_model = DecisionTreeClassifier(max_depth=max_depth, random_state=42)
 
@@ -589,7 +613,13 @@ def run_ClassificationMinst_app():
                 n_folds = st.slider("Chọn số folds cho K-Fold Cross-Validation:", min_value=2, max_value=10, value=5)
 
                 if st.button("🚀 Huấn luyện mô hình"):
-                    with mlflow.start_run():
+                    # Kiểm tra giá trị run_name trước khi huấn luyện
+                    st.write(f"Tên run sẽ sử dụng: {run_name}")
+                    
+                    with mlflow.start_run(run_name=run_name):
+                        # Gán run_name vào tag mlflow.runName để lưu trữ
+                        mlflow.set_tag("mlflow.runName", run_name)
+                        
                         # Khởi tạo mô hình SVM
                         svm_model = SVC(kernel=kernel, C=C, random_state=42)
 
@@ -660,68 +690,99 @@ def run_ClassificationMinst_app():
                         st.write(f"✅ **Độ chính xác trên tập validation:** `{accuracy_svm:.4f}`")
                     
                     mlflow.end_run()
-
                         
     with tab_demo:   
         with st.expander("**Dự đoán kết quả**", expanded=True):
             st.write("**Dự đoán trên ảnh do người dùng tải lên**")
 
-            # Kiểm tra xem mô hình đã được huấn luyện và lưu kết quả chưa
-            if "selected_model_type" not in st.session_state or "trained_model" not in st.session_state:
-                st.warning("⚠️ Chưa có mô hình nào được huấn luyện. Vui lòng huấn luyện mô hình trước khi dự đoán.")
-            else:
-                best_model_name = st.session_state.selected_model_type
-                best_model = st.session_state.trained_model
+            # Kiểm tra xem có run nào được log trong MLflow hay không
+            try:
+                client = MlflowClient()
+                experiment_name = "Classification"  # Đảm bảo tên experiment khớp với tab_mlflow
+                experiment = client.get_experiment_by_name(experiment_name)
+                
+                if experiment is None:
+                    st.warning("⚠️ Chưa có experiment nào được tạo. Vui lòng huấn luyện mô hình trước khi dự đoán.")
+                else:
+                    experiment_id = experiment.experiment_id
+                    runs = client.search_runs(experiment_ids=[experiment_id])
 
-                st.write(f"🎯 Mô hình đang sử dụng: `{best_model_name}`")
-                # st.write(f"✅ Độ chính xác trên tập kiểm tra: `{st.session_state.get('test_accuracy', 'N/A'):.4f}`")
-
-                # Lấy các tham số từ session_state để hiển thị
-                if best_model_name == "Decision Tree":
-                    criterion = st.session_state.get("dt_criterion", "entropy")
-                    max_depth = st.session_state.get("dt_max_depth", 5)  # Giá trị mặc định là 5
-                    n_folds = st.session_state.get("n_folds", 5)  # Giá trị mặc định là 5
-                    st.write("🔹 **Tham số mô hình Decision Tree:**")
-                    st.write(f"- **Tiêu chí phân nhánh**: `{criterion}`")
-                    st.write(f"- **Độ sâu tối đa**: `{max_depth}`")
-                    st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
-                elif best_model_name == "SVM":
-                    kernel = st.session_state.get("svm_kernel", "linear")
-                    C = st.session_state.get("svm_C", 1.0)
-                    n_folds = st.session_state.get("n_folds", 5)  # Giá trị mặc định là 5
-                    st.write("🔹 **Tham số mô hình SVM:**")
-                    st.write(f"- **Kernel**: `{kernel}`")
-                    st.write(f"- **C (Regularization)**: `{C}`")
-                    st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
-
-                # Cho phép người dùng tải lên ảnh
-                uploaded_file = st.file_uploader("📂 Chọn một ảnh để dự đoán", type=["png", "jpg", "jpeg"])
-
-                if uploaded_file is not None:
-                    # Đọc ảnh từ tệp tải lên
-                    image = Image.open(uploaded_file).convert("L")  # Chuyển sang ảnh xám
-                    image = np.array(image)
-
-                    # Kiểm tra xem dữ liệu huấn luyện đã lưu trong session_state hay chưa
-                    if "X_train" in st.session_state:
-                        X_train_shape = st.session_state["X_train"].shape[1]  # Lấy số đặc trưng từ tập huấn luyện
-
-                        # Resize ảnh về kích thước phù hợp với mô hình đã huấn luyện
-                        image = cv2.resize(image, (28, 28))  # Cập nhật kích thước theo dữ liệu ban đầu
-                        image = image.reshape(1, -1)  # Chuyển về vector 1 chiều
-
-                        # Đảm bảo số chiều đúng với dữ liệu huấn luyện
-                        if image.shape[1] == X_train_shape:
-                            prediction = best_model.predict(image)[0]
-
-                            # Hiển thị ảnh và kết quả dự đoán
-                            st.image(uploaded_file, caption="📷 Ảnh bạn đã tải lên", use_container_width=True)
-                            st.success(f"✅ **Dự đoán:** {prediction}")
-                        else:
-                            st.error(f"🚨 Ảnh không có số đặc trưng đúng ({image.shape[1]} thay vì {X_train_shape}). Hãy kiểm tra lại dữ liệu đầu vào!")
+                    if not runs:
+                        st.warning("⚠️ Chưa có mô hình nào được huấn luyện. Vui lòng huấn luyện mô hình trước khi dự đoán.")
                     else:
-                        st.error("🚨 Dữ liệu huấn luyện không tìm thấy. Hãy huấn luyện mô hình trước khi dự đoán.")
+                        # Tạo danh sách các run để người dùng chọn
+                        run_options = {}
+                        for run in runs:
+                            run_name = run.data.tags.get("mlflow.runName", "Unnamed")
+                            run_id = run.info.run_id
+                            model_type = run.data.params.get("model_type", "Unknown")
+                            run_options[run_id] = f"{run_name} ({model_type}) - {run_id}"
 
+                        selected_run_id = st.selectbox("🔹 Chọn mô hình đã huấn luyện để sử dụng:", 
+                                                    options=list(run_options.keys()), 
+                                                    format_func=lambda x: run_options[x])
+
+                        # Tải mô hình từ run được chọn
+                        selected_run = client.get_run(selected_run_id)
+                        model_type = selected_run.data.params.get("model_type", "Unknown")
+                        if model_type == "Decision Tree":
+                            model_uri = f"runs:/{selected_run_id}/decision_tree_model"
+                        elif model_type == "SVM":
+                            model_uri = f"runs:/{selected_run_id}/svm_model"
+                        else:
+                            model_uri = f"runs:/{selected_run_id}/model"  # Dự phòng cho trường hợp khác
+
+                        try:
+                            best_model = mlflow.sklearn.load_model(model_uri)
+                            st.write(f"🎯 Mô hình đang sử dụng: `{model_type}` (Run: {run_options[selected_run_id]})")
+                        except Exception as e:
+                            st.error(f"🚨 Không thể tải mô hình từ MLflow: {e}")
+                            best_model = None
+
+                        if best_model:
+                            # Hiển thị tham số của mô hình đã chọn
+                            if model_type == "Decision Tree":
+                                max_depth = selected_run.data.params.get("max_depth", "N/A")
+                                n_folds = selected_run.data.params.get("n_folds", "N/A")
+                                st.write("🔹 **Tham số mô hình Decision Tree:**")
+                                st.write(f"- **Độ sâu tối đa**: `{max_depth}`")
+                                st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
+                            elif model_type == "SVM":
+                                kernel = selected_run.data.params.get("kernel", "N/A")
+                                C = selected_run.data.params.get("C_value", "N/A")
+                                n_folds = selected_run.data.params.get("n_folds", "N/A")
+                                st.write("🔹 **Tham số mô hình SVM:**")
+                                st.write(f"- **Kernel**: `{kernel}`")
+                                st.write(f"- **C (Regularization)**: `{C}`")
+                                st.write(f"- **Số folds trong Cross-Validation**: `{n_folds}`")
+
+                            # Cho phép người dùng tải lên ảnh
+                            uploaded_file = st.file_uploader("📂 Chọn một ảnh để dự đoán", type=["png", "jpg", "jpeg"])
+
+                            if uploaded_file is not None:
+                                # Đọc ảnh từ tệp tải lên
+                                image = Image.open(uploaded_file).convert("L")  # Chuyển sang ảnh xám
+                                image = np.array(image)
+
+                                # Kiểm tra xem dữ liệu huấn luyện đã lưu trong session_state hay chưa
+                                if "X_train" in st.session_state:
+                                    X_train_shape = st.session_state["X_train"].shape[1]  # Lấy số đặc trưng từ tập huấn luyện
+
+                                    # Resize ảnh về kích thước phù hợp với mô hình đã huấn luyện
+                                    image = cv2.resize(image, (28, 28))  # Giả định dữ liệu gốc là 28x28 (như MNIST)
+                                    image = image.reshape(1, -1)  # Chuyển về vector 1 chiều
+
+                                    # Đảm bảo số chiều đúng với dữ liệu huấn luyện
+                                    if image.shape[1] == X_train_shape:
+                                        prediction = best_model.predict(image)[0]
+                                        st.image(uploaded_file, caption="📷 Ảnh bạn đã tải lên", use_container_width=True)
+                                        st.success(f"✅ **Dự đoán:** {prediction}")
+                                    else:
+                                        st.error(f"🚨 Ảnh không có số đặc trưng đúng ({image.shape[1]} thay vì {X_train_shape}). Hãy kiểm tra lại dữ liệu đầu vào!")
+                                else:
+                                    st.error("🚨 Dữ liệu huấn luyện không tìm thấy. Hãy huấn luyện mô hình trước khi dự đoán.")
+            except Exception as e:
+                st.error(f"🚨 Không thể kết nối với MLflow: {e}")
     with tab_mlflow:
         st.header("Thông tin Huấn luyện & MLflow UI")
         try:
@@ -825,11 +886,6 @@ if __name__ == "__main__":
     # print("🎯 Kiểm tra trên DagsHub: https://dagshub.com/Dung2204/MINST.mlflow/")
     # # # cd "C:\Users\Dell\OneDrive\Pictures\Documents\Code\python\OpenCV\HMVPYTHON\App"
     # ClassificationMinst.
-    
 
 
-
-    ## thay vì decision tree là gini và entropy thì -> chỉ còn entropy với chọn độ sâu của cây
-    ## bổ sung thêm Chọn số folds (KFold Cross-Validation) ở cả 2 phần decsion tree và svms
-    ## cập nhật lại phần demo , vì nó đang không sử dụng dữ liệu ở phần huấn luyện
   
