@@ -49,15 +49,15 @@ def run_PseudoLabeling_app():
         return labels
     
 
-    mlflow_tracking_uri = st.secrets["MLFLOW_TRACKING_URI"]
-    mlflow_username = st.secrets["MLFLOW_TRACKING_USERNAME"]
-    mlflow_password = st.secrets["MLFLOW_TRACKING_PASSWORD"]
+    # mlflow_tracking_uri = st.secrets["MLFLOW_TRACKING_URI"]
+    # mlflow_username = st.secrets["MLFLOW_TRACKING_USERNAME"]
+    # mlflow_password = st.secrets["MLFLOW_TRACKING_PASSWORD"]
     
-    # Thiết lập biến môi trường
-    os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
-    os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
-    os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
-    mlflow.set_tracking_uri(mlflow_tracking_uri)
+    # # Thiết lập biến môi trường
+    # os.environ["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+    # os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
+    # os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
+    # mlflow.set_tracking_uri(mlflow_tracking_uri)
     
     dataset_path = os.path.dirname(os.path.abspath(__file__))
     train_images_path = os.path.join(dataset_path, "train-images.idx3-ubyte")
@@ -96,7 +96,7 @@ def run_PseudoLabeling_app():
     st.session_state.y_test = y_test
 
     # Giao diện Streamlit
-    st.title("📸 PseudoLabeling Neural NetWork")
+    st.title("📸 MNIST Neural NetWork")
     tabs = st.tabs([
             "Thông tin",
             "Tập dữ liệu",
@@ -354,7 +354,7 @@ def run_PseudoLabeling_app():
                         - Kỹ thuật này đặc biệt hữu ích khi lượng dữ liệu có nhãn ít, nhưng dữ liệu chưa có nhãn lại dồi dào.
                         """
                 )
-                # st.image("pseudo_label_diagram.png", caption="Quy trình Pseudo Labelling (Nguồn: Tự tạo hoặc tham khảo từ tài liệu học thuật)", use_container_width=True)
+                st.image("pseudo_label_diagram.png", caption="Quy trình Pseudo Labelling (Nguồn: Tự tạo hoặc tham khảo từ tài liệu học thuật)", use_container_width=True)
 
                 st.markdown("---")
                 st.markdown("### Quy trình Pseudo Labelling")
@@ -450,59 +450,78 @@ def run_PseudoLabeling_app():
                     y = y[sampled_indices]
                 st.write(f"🔹 Số mẫu dữ liệu được chọn: `{X.shape[0]}`")
 
-                # (0) Chia tập train/test với tỷ lệ do người dùng chọn
+                # (0) Chia tập train/valid/test với tỷ lệ do người dùng chọn
                 test_size_percent = st.slider("🔹 Chọn % tỷ lệ tập test", min_value=10, max_value=50, value=20, step=5, key="test_size") / 100
-                X_train_full, X_test, y_train_full, y_test = train_test_split(X, y, test_size=test_size_percent, random_state=42)
+                valid_size_percent = st.slider("🔹 Chọn % tỷ lệ tập validation", min_value=5, max_value=30, value=10, step=5, key="valid_size") / 100
+                train_size_percent = 1.0 - test_size_percent - valid_size_percent
 
-                # (1) Lấy 1% số lượng ảnh cho mỗi class từ tập train làm tập train ban đầu
-                def sample_per_class(X, y, percentage=0.01):
-                    unique_classes = np.unique(y)
-                    X_sampled = []
-                    y_sampled = []
-                    sampled_indices = []
-                    for cls in unique_classes:
-                        cls_indices = np.where(y == cls)[0]
-                        num_samples = max(1, int(len(cls_indices) * percentage))  # Đảm bảo ít nhất 1 mẫu
-                        cls_sampled_indices = np.random.choice(cls_indices, num_samples, replace=False)
-                        sampled_indices.extend(cls_sampled_indices)
-                        X_sampled.append(X[cls_sampled_indices])
-                        y_sampled.append(y[cls_sampled_indices])
-                    return np.concatenate(X_sampled), np.concatenate(y_sampled), sampled_indices
+                if train_size_percent <= 0:
+                    st.error("🚨 Tổng tỷ lệ test và validation vượt quá 100%. Vui lòng điều chỉnh lại!")
+                else:
+                    X_train_full, X_temp, y_train_full, y_temp = train_test_split(X, y, test_size=(test_size_percent + valid_size_percent), random_state=42)
+                    valid_relative_size = valid_size_percent / (test_size_percent + valid_size_percent)
+                    X_valid, X_test, y_valid, y_test = train_test_split(X_temp, y_temp, test_size=(1 - valid_relative_size), random_state=42)
 
-                X_train_initial, y_train_initial, sampled_indices = sample_per_class(X_train_full, y_train_full, percentage=0.01)
+                    # (1) Lấy tỷ lệ phần trăm do người dùng chọn cho mỗi class từ tập train làm tập train ban đầu
+                    def sample_per_class(X, y, percentage):
+                        unique_classes = np.unique(y)
+                        X_sampled = []
+                        y_sampled = []
+                        sampled_indices = []
+                        for cls in unique_classes:
+                            cls_indices = np.where(y == cls)[0]
+                            num_samples = max(1, int(len(cls_indices) * percentage))  # Đảm bảo ít nhất 1 mẫu
+                            cls_sampled_indices = np.random.choice(cls_indices, num_samples, replace=False)
+                            sampled_indices.extend(cls_sampled_indices)
+                            X_sampled.append(X[cls_sampled_indices])
+                            y_sampled.append(y[cls_sampled_indices])
+                        return np.concatenate(X_sampled), np.concatenate(y_sampled), sampled_indices
 
-                # Tạo mặt nạ để loại bỏ các chỉ số đã chọn
-                mask = np.ones(len(X_train_full), dtype=bool)
-                mask[sampled_indices] = False
-                X_unlabeled = X_train_full[mask]
-                y_unlabeled = y_train_full[mask]
+                    train_percentage = st.slider(
+                        "🔹 Chọn % tỷ lệ tập train ban đầu", 
+                        min_value=0.1, 
+                        max_value=5.0, 
+                        value=1.0, 
+                        step=0.1, 
+                        key="train_percentage"
+                    ) / 100
+                    X_train_initial, y_train_initial, sampled_indices = sample_per_class(X_train_full, y_train_full, percentage=train_percentage)
 
-                # Lưu vào session_state
-                st.session_state.X_train_full = X_train_full  # Tập train đầy đủ
-                st.session_state.y_train_full = y_train_full
-                st.session_state.X_train_initial = X_train_initial  # Tập 1% ban đầu
-                st.session_state.y_train_initial = y_train_initial
-                st.session_state.X_unlabeled = X_unlabeled  # Tập chưa gán nhãn
-                st.session_state.y_unlabeled = y_unlabeled  # Nhãn thật của tập chưa gán (dùng để kiểm tra sau)
-                st.session_state.X_test = X_test
-                st.session_state.y_test = y_test
+                    # Tạo mặt nạ để loại bỏ các chỉ số đã chọn
+                    mask = np.ones(len(X_train_full), dtype=bool)
+                    mask[sampled_indices] = False
+                    X_unlabeled = X_train_full[mask]
+                    y_unlabeled = y_train_full[mask]
 
-                # Hiển thị thông tin phân chia hoàn thiện
-                total_samples = X.shape[0]
-                train_percent = (X_train_full.shape[0] / total_samples) * 100
-                test_percent = (X_test.shape[0] / total_samples) * 100
-                train_initial_percent = (X_train_initial.shape[0] / total_samples) * 100
-                unlabeled_percent = (X_unlabeled.shape[0] / total_samples) * 100
+                    # Lưu vào session_state
+                    st.session_state.X_train_full = X_train_full  # Tập train đầy đủ
+                    st.session_state.y_train_full = y_train_full
+                    st.session_state.X_train_initial = X_train_initial  # Tập train ban đầu theo tỷ lệ chọn
+                    st.session_state.y_train_initial = y_train_initial
+                    st.session_state.X_unlabeled = X_unlabeled  # Tập chưa gán nhãn
+                    st.session_state.y_unlabeled = y_unlabeled  # Nhãn thật của tập chưa gán (dùng để kiểm tra sau)
+                    st.session_state.X_valid = X_valid  # Tập validation
+                    st.session_state.y_valid = y_valid
+                    st.session_state.X_test = X_test
+                    st.session_state.y_test = y_test
 
-                st.write(f"📊 **Tỷ lệ phân chia**: Train = {train_percent:.1f}% , Test = {test_percent:.1f}%")
-                st.write(f"🔹 Train ban đầu (1%) = {train_initial_percent:.1f}% , Unlabeled = {unlabeled_percent:.1f}%")
-                st.write("✅ Dữ liệu đã được xử lý và chia tách.")
-                st.write(f"🔹 Kích thước tập train ban đầu (1%): `{X_train_initial.shape}`")
-                st.write(f"🔹 Kích thước tập unlabeled: `{X_unlabeled.shape}`")
-                st.write(f"🔹 Kích thước tập kiểm tra: `{X_test.shape}`")
+                    # Hiển thị thông tin phân chia hoàn thiện
+                    total_samples = X.shape[0]
+                    train_percent = (X_train_full.shape[0] / total_samples) * 100
+                    valid_percent = (X_valid.shape[0] / total_samples) * 100
+                    test_percent = (X_test.shape[0] / total_samples) * 100
+                    train_initial_percent = (X_train_initial.shape[0] / total_samples) * 100
+                    unlabeled_percent = (X_unlabeled.shape[0] / total_samples) * 100
+
+                    st.write(f"📊 **Tỷ lệ phân chia**: Train = {train_percent:.1f}% , Validation = {valid_percent:.1f}% , Test = {test_percent:.1f}%")
+                    st.write(f"🔹 Train ban đầu ({train_percentage*100:.1f}%) = {train_initial_percent:.1f}% , Unlabeled = {unlabeled_percent:.1f}%")
+                    st.write("✅ Dữ liệu đã được xử lý và chia tách.")
+                    st.write(f"🔹 Kích thước tập train ban đầu: `{X_train_initial.shape}`")
+                    st.write(f"🔹 Kích thước tập unlabeled: `{X_unlabeled.shape}`")
+                    st.write(f"🔹 Kích thước tập validation: `{X_valid.shape}`")
+                    st.write(f"🔹 Kích thước tập kiểm tra: `{X_test.shape}`")
             else:
                 st.error("🚨 Dữ liệu chưa được nạp. Hãy đảm bảo `train_images`, `train_labels` và `test_images` đã được tải trước khi chạy.")
-
 
     with tab_preprocess:
         with st.expander("**Huấn luyện Neural Network**", expanded=True):
@@ -525,9 +544,12 @@ def run_PseudoLabeling_app():
                 test_percent = (X_test.shape[0] / total_samples) * 100
 
                 st.write(f"📊 **Thông tin tập dữ liệu ban đầu**:")
-                st.write(f"🔹 Train ban đầu (1%)={train_initial_percent:.1f}%, Kích thước: `{X_train_initial.shape}`")
-                st.write(f"🔹 Unlabeled={unlabeled_percent:.1f}%, Kích thước: `{st.session_state.X_unlabeled.shape}`")
-                st.write(f"🔹 Test={test_percent:.1f}%, Kích thước: `{X_test.shape}`")
+                st.write(f"🔹Train ban đầu ({train_percentage*100:.1f}%) , kích thước: `{X_train_initial.shape}`")
+                # st.write(f"🔹 Train ban đầu 
+                # st.write(f"🔹 Train ban đầu (%)={train_percentage*100:.1f}
+                st.write(f"🔹 Tập Unlabeled kích thước: `{st.session_state.X_unlabeled.shape}`")
+                st.write(f"🔹 Tập Test kích thước: `{X_test.shape}`")
+                st.write(f"🔹 Tập validation kích thước: `{X_valid.shape}`")
                 st.markdown("---")
 
                 # Cấu hình huấn luyện ban đầu
@@ -615,6 +637,220 @@ def run_PseudoLabeling_app():
                             st.session_state['initial_history'] = history
                             # Không cần gán st.session_state['model_name'] vì giá trị đã được lưu tự động trong st.session_state['model_name'] qua key
 
+    # with tab_pseudo_labeling:
+    #     with st.expander("**Huấn luyện với Pseudo-Labeling**", expanded=True):
+    #         if "X_train_initial" not in st.session_state or "initial_model" not in st.session_state:
+    #             st.error("🚨 Vui lòng phân chia dữ liệu ở tab 'Phân chia dữ liệu' và huấn luyện Neural Network trước khi tiếp tục.")
+    #         else:
+    #             X_train_initial = st.session_state.X_train_initial
+    #             y_train_initial = st.session_state.y_train_initial
+    #             X_unlabeled = st.session_state.X_unlabeled
+    #             X_test = st.session_state.X_test
+    #             y_test = st.session_state.y_test
+    #             model = st.session_state['initial_model']
+
+    #             # Chuẩn hóa dữ liệu
+    #             X_train_initial = X_train_initial / 255.0
+    #             X_unlabeled = X_unlabeled / 255.0
+    #             X_test = X_test / 255.0
+
+    #             # In thông tin ban đầu
+    #             total_samples = X_train_initial.shape[0] + X_unlabeled.shape[0] + X_test.shape[0]
+    #             st.write(f"📊 **Tổng số mẫu:** {total_samples}")
+    #             st.write(f"🔹Train ban đầu ({train_percentage*100:.1f}%) , kích thước: `{X_train_initial.shape}`")
+    #             st.write(f"🔹 Kích thước tập Unlabeled: `{X_unlabeled.shape}`")
+    #             st.write(f"🔹 Kích thước tập Test: `{X_test.shape}`")
+    #             st.write(f"🔹 Kích thước tập validation: `{X_valid.shape}`")
+    #             st.markdown("---")
+
+    #             # Cho user tùy chọn số lượng mẫu huấn luyện có gán nhãn (?%)
+    #             labeled_percentage = st.slider(
+    #                 "🔹 Tỷ lệ mẫu huấn luyện có gán nhãn (%)", 
+    #                 min_value=10, 
+    #                 max_value=100, 
+    #                 value=50, 
+    #                 step=10, 
+    #                 key="labeled_percentage"
+    #             )
+    #             num_labeled_samples = int(X_train_initial.shape[0] * (labeled_percentage / 100))
+    #             st.write(f"🔹 Số lượng mẫu labeled được chọn: {num_labeled_samples}/{X_train_initial.shape[0]}")
+
+    #             # Cấu hình huấn luyện với pseudo-labeling
+    #             epochs_pl = st.slider("🔹 Số epoch mỗi vòng (PL)", min_value=5, max_value=50, value=20, key="epochs_pl")
+    #             batch_size_pl = st.selectbox("🔹 Batch size (PL)", options=[32, 64, 128, 256], index=0, key="batch_size_pl")
+    #             threshold = st.number_input("🔹 Ngưỡng Pseudo-Label", min_value=0.5, max_value=0.99, value=0.90, step=0.01, format="%.2f", key="threshold")
+    #             max_iterations = st.slider("🔹 Số vòng lặp tối đa", min_value=1, max_value=20, value=10, key="max_iterations")
+    #             learning_rate_pl = st.number_input("🔹 Learning Rate (PL)", min_value=0.0001, max_value=0.1, value=0.001, step=0.0001, format="%.4f", key="learning_rate_pl")
+                
+    #             # Thêm phần đặt tên mô hình
+    #             pseudo_model_name = st.text_input("🔹 Đặt tên cho mô hình Pseudo-Labeling", value="My_Pseudo_Model", key="pseudo_model_name")
+
+    #             if st.button("🚀 Bắt đầu huấn luyện với Pseudo-Labeling", key="pseudo_train_button"):
+    #                 with st.spinner(f"Đang huấn luyện mô hình '{pseudo_model_name}'..."):
+    #                     # Tạo thanh trạng thái
+    #                     progress_bar = st.progress(0)
+    #                     status_text = st.empty()
+
+    #                     with mlflow.start_run(run_name=pseudo_model_name):  # Sử dụng tên người dùng đặt
+    #                         # Ghi lại tham số
+    #                         mlflow.log_param("epochs_per_iteration", epochs_pl)
+    #                         mlflow.log_param("batch_size", batch_size_pl)
+    #                         mlflow.log_param("threshold", threshold)
+    #                         mlflow.log_param("max_iterations", max_iterations)
+    #                         mlflow.log_param("learning_rate", learning_rate_pl)
+    #                         mlflow.log_param("labeled_percentage", labeled_percentage)
+
+    #                         # Cập nhật optimizer
+    #                         optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_pl)
+    #                         model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    #                         # Chỉ lấy phần dữ liệu labeled theo tỷ lệ người dùng chọn
+    #                         X_current_labeled = X_train_initial[:num_labeled_samples].copy()
+    #                         y_current_labeled = y_train_initial[:num_labeled_samples].copy()
+    #                         X_current_unlabeled = X_unlabeled.copy()
+
+    #                         # Nếu có ground truth cho tập unlabeled (giả định để kiểm tra độ chính xác của pseudo-labels)
+    #                         if "y_unlabeled" in st.session_state:  # Kiểm tra nếu có ground truth
+    #                             y_unlabeled_true = st.session_state["y_unlabeled"]
+    #                         else:
+    #                             y_unlabeled_true = None
+
+    #                         # Khởi tạo DataFrame để lưu kết quả
+    #                         results_df = pd.DataFrame(columns=[
+    #                             "Vòng", "Test Accuracy", "Min Prob", "Max Prob", "Mean Prob",
+    #                             "Số mẫu gán nhãn", "Tập labeled", "Số mẫu unlabeled", "Pseudo Correct"  # Thêm cột mới
+    #                         ])
+
+    #                         # Tạo placeholder để hiển thị bảng và hình ảnh
+    #                         table_placeholder = st.empty()
+    #                         image_placeholder = st.empty()
+
+    #                         # Quá trình Pseudo-Labeling
+    #                         for iteration in range(max_iterations):
+    #                             with st.spinner(f"Đang huấn luyện vòng {iteration + 1}/{max_iterations} cho mô hình '{pseudo_model_name}'..."):
+    #                                 # Callback để cập nhật thanh trạng thái trong mỗi vòng
+    #                                 class ProgressCallback(tf.keras.callbacks.Callback):
+    #                                     def on_epoch_end(self, epoch, logs=None):
+    #                                         progress = ((iteration * epochs_pl) + (epoch + 1)) / (max_iterations * epochs_pl)
+    #                                         progress_bar.progress(min(int(progress * 100), 100))
+    #                                         status_text.text(f"Tiến trình huấn luyện: {int(progress * 100)}%")
+
+    #                                 # (2) Huấn luyện mô hình trên tập labeled hiện tại
+    #                                 history = model.fit(
+    #                                     X_current_labeled,
+    #                                     y_current_labeled,
+    #                                     epochs=epochs_pl,
+    #                                     batch_size=batch_size_pl,
+    #                                     verbose=0,
+    #                                     callbacks=[ProgressCallback()]
+    #                                 )
+
+    #                                 # Ghi lại chỉ số từ history cho mỗi vòng
+    #                                 for epoch, (loss, acc) in enumerate(zip(history.history['loss'], history.history['accuracy'])):
+    #                                     mlflow.log_metric(f"train_loss_iter_{iteration+1}", loss, step=epoch)
+    #                                     mlflow.log_metric(f"train_accuracy_iter_{iteration+1}", acc, step=epoch)
+
+    #                                 # Đánh giá trên tập test
+    #                                 test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
+    #                                 st.session_state["pseudo_test_accuracy"] = test_accuracy
+    #                                 mlflow.log_metric(f"test_loss_iter_{iteration+1}", test_loss)
+    #                                 mlflow.log_metric(f"test_accuracy_iter_{iteration+1}", test_accuracy)
+
+    #                                 # (3) Dự đoán nhãn cho tập unlabeled
+    #                                 probs = model.predict(X_current_unlabeled, verbose=0)
+    #                                 max_probs = np.max(probs, axis=1)
+    #                                 pseudo_labels = np.argmax(probs, axis=1)
+
+    #                                 # (4) Lọc các mẫu vượt ngưỡng
+    #                                 confident_mask = max_probs >= threshold
+    #                                 X_confident = X_current_unlabeled[confident_mask]
+    #                                 y_confident = pseudo_labels[confident_mask]
+
+    #                                 # Tính toán số lượng nhãn pseudo đúng (nếu có ground truth)
+    #                                 pseudo_correct = None
+    #                                 if y_unlabeled_true is not None and len(X_confident) > 0:
+    #                                     y_confident_true = y_unlabeled_true[confident_mask]
+    #                                     pseudo_correct = np.sum(y_confident == y_confident_true)
+    #                                     st.write(
+    #                                         f"🔹 **Thông tin vòng {iteration + 1}:** Số lượng mẫu được gán Pseudo Labels đúng: {pseudo_correct}/{len(X_confident)} ({pseudo_correct/len(X_confident)*100:.2f}%)"
+    #                                     )
+    #                                     # Cập nhật tập y_unlabeled_true sau khi loại bỏ các mẫu đã gán
+    #                                     y_unlabeled_true = y_unlabeled_true[~confident_mask]
+
+    #                                 # Ghi lại các chỉ số thống kê
+    #                                 mlflow.log_metric(f"min_prob_iter_{iteration+1}", np.min(max_probs))
+    #                                 mlflow.log_metric(f"max_prob_iter_{iteration+1}", np.max(max_probs))
+    #                                 mlflow.log_metric(f"mean_prob_iter_{iteration+1}", np.mean(max_probs))
+    #                                 mlflow.log_metric(f"num_labeled_samples_iter_{iteration+1}", len(X_confident))
+
+    #                                 # (5) Minh họa các mẫu được gán nhãn Pseudo
+    #                                 if len(X_confident) > 0:
+    #                                     st.write(f"### Minh họa các mẫu được gán nhãn Pseudo ở vòng {iteration + 1}")
+    #                                     num_samples_to_show = min(5, len(X_confident))  # Hiển thị tối đa 5 mẫu
+    #                                     cols = st.columns(num_samples_to_show)
+    #                                     for i in range(num_samples_to_show):
+    #                                         # Giả sử dữ liệu là ảnh (ví dụ: 28x28 như MNIST)
+    #                                         sample_image = X_confident[i].reshape(28, 28)  # Điều chỉnh kích thước tùy theo dữ liệu
+    #                                         with cols[i]:
+    #                                             st.image(sample_image, caption=f"Nhãn: {y_confident[i]}, Xác suất: {max_probs[confident_mask][i]:.4f}", width=100)
+
+    #                                 # (6) Cập nhật tập labeled và unlabeled
+    #                                 if len(X_confident) > 0:
+    #                                     X_current_labeled = np.concatenate([X_current_labeled, X_confident])
+    #                                     y_current_labeled = np.concatenate([y_current_labeled, y_confident])
+    #                                     X_current_unlabeled = X_current_unlabeled[~confident_mask]
+
+    #                                 # Thêm kết quả vào DataFrame
+    #                                 new_row = pd.DataFrame({
+    #                                     "Vòng": [iteration + 1],
+    #                                     "Test Accuracy": [test_accuracy],
+    #                                     "Min Prob": [np.min(max_probs)],
+    #                                     "Max Prob": [np.max(max_probs)],
+    #                                     "Mean Prob": [np.mean(max_probs)],
+    #                                     "Số mẫu gán nhãn": [len(X_confident)],
+    #                                     "Tập labeled": [str(X_current_labeled.shape)],
+    #                                     "Số mẫu unlabeled": [X_current_unlabeled.shape[0]],
+    #                                     "Pseudo Correct": [pseudo_correct]  # Thêm thông tin nhãn đúng
+    #                                 })
+    #                                 results_df = pd.concat([results_df, new_row], ignore_index=True)
+
+    #                                 # Cập nhật bảng trong placeholder
+    #                                 with table_placeholder.container():
+    #                                     st.markdown(f"### 🔄 **Kết quả huấn luyện qua các vòng**")
+    #                                     st.dataframe(results_df.style.format({
+    #                                         "Test Accuracy": "{:.4f}",
+    #                                         "Min Prob": "{:.4f}",
+    #                                         "Max Prob": "{:.4f}",
+    #                                         "Mean Prob": "{:.4f}",
+    #                                         "Số mẫu gán nhãn": "{:d}",
+    #                                         "Số mẫu unlabeled": "{:d}",
+    #                                         "Pseudo Correct": lambda x: f"{int(x)}" if pd.notnull(x) else "N/A"
+    #                                     }))
+
+    #                                 # Điều kiện dừng
+    #                                 if len(X_confident) == 0:
+    #                                     st.write(f"🔹 Vòng {iteration + 1}: Không có mẫu nào vượt ngưỡng {threshold}. Dừng lại.")
+    #                                     break
+    #                                 if len(X_confident) < 10:
+    #                                     st.write(f"🔹 Vòng {iteration + 1}: Số mẫu gán nhãn quá ít ({len(X_confident)}). Dừng lại.")
+    #                                     break
+    #                                 if len(X_current_unlabeled) == 0:
+    #                                     st.write("✅ Đã gán nhãn hết tập unlabeled!")
+    #                                     break
+
+    #                         # Đánh giá mô hình cuối cùng
+    #                         test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
+    #                         mlflow.log_metric("final_test_loss", test_loss)
+    #                         mlflow.log_metric("final_test_accuracy", test_accuracy)
+
+    #                         # Lưu mô hình cuối cùng vào MLflow
+    #                         mlflow.keras.log_model(model, "pseudo_labeled_model")
+
+    #                         # Cập nhật thanh trạng thái hoàn tất
+    #                         progress_bar.progress(100)
+    #                         status_text.text("Huấn luyện hoàn tất: 100%")
+    #                         st.success(f"✅ Quá trình huấn luyện mô hình '{pseudo_model_name}' hoàn tất! Test Accuracy cuối cùng: {test_accuracy:.4f}")
+    #                         st.session_state['pseudo_model'] = model
     with tab_pseudo_labeling:
         with st.expander("**Huấn luyện với Pseudo-Labeling**", expanded=True):
             if "X_train_initial" not in st.session_state or "initial_model" not in st.session_state:
@@ -635,10 +871,23 @@ def run_PseudoLabeling_app():
                 # In thông tin ban đầu
                 total_samples = X_train_initial.shape[0] + X_unlabeled.shape[0] + X_test.shape[0]
                 st.write(f"📊 **Tổng số mẫu:** {total_samples}")
-                st.write(f"🔹 Train ban đầu (1%): `{X_train_initial.shape}`")
-                st.write(f"🔹 Unlabeled: `{X_unlabeled.shape}`")
-                st.write(f"🔹 Test: `{X_test.shape}`")
+                st.write(f"🔹Train ban đầu ({train_percentage*100:.1f}%) , kích thước: `{X_train_initial.shape}`")
+                st.write(f"🔹 Kích thước tập Unlabeled: `{X_unlabeled.shape}`")
+                st.write(f"🔹 Kích thước tập Test: `{X_test.shape}`")
+                st.write(f"🔹 Kích thước tập validation: `{X_valid.shape}`")
                 st.markdown("---")
+
+                # Cho user tùy chọn số lượng mẫu huấn luyện có gán nhãn (?%)
+                labeled_percentage = st.slider(
+                    "🔹 Tỷ lệ mẫu huấn luyện có gán nhãn (%)", 
+                    min_value=10, 
+                    max_value=100, 
+                    value=50, 
+                    step=10, 
+                    key="labeled_percentage"
+                )
+                num_labeled_samples = int(X_train_initial.shape[0] * (labeled_percentage / 100))
+                st.write(f"🔹 Số lượng mẫu labeled được chọn: {num_labeled_samples}/{X_train_initial.shape[0]}")
 
                 # Cấu hình huấn luyện với pseudo-labeling
                 epochs_pl = st.slider("🔹 Số epoch mỗi vòng (PL)", min_value=5, max_value=50, value=20, key="epochs_pl")
@@ -663,21 +912,32 @@ def run_PseudoLabeling_app():
                             mlflow.log_param("threshold", threshold)
                             mlflow.log_param("max_iterations", max_iterations)
                             mlflow.log_param("learning_rate", learning_rate_pl)
+                            mlflow.log_param("labeled_percentage", labeled_percentage)
 
                             # Cập nhật optimizer
                             optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_pl)
                             model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-                            # Khởi tạo tập labeled và unlabeled
-                            X_current_labeled = X_train_initial.copy()
-                            y_current_labeled = y_train_initial.copy()
+                            # Chỉ lấy phần dữ liệu labeled theo tỷ lệ người dùng chọn
+                            X_current_labeled = X_train_initial[:num_labeled_samples].copy()
+                            y_current_labeled = y_train_initial[:num_labeled_samples].copy()
                             X_current_unlabeled = X_unlabeled.copy()
+
+                            # Nếu có ground truth cho tập unlabeled (giả định để kiểm tra độ chính xác của pseudo-labels)
+                            if "y_unlabeled" in st.session_state:  # Kiểm tra nếu có ground truth
+                                y_unlabeled_true = st.session_state["y_unlabeled"]
+                            else:
+                                y_unlabeled_true = None
 
                             # Khởi tạo DataFrame để lưu kết quả
                             results_df = pd.DataFrame(columns=[
                                 "Vòng", "Test Accuracy", "Min Prob", "Max Prob", "Mean Prob",
-                                "Số mẫu gán nhãn", "Tập labeled", "Số mẫu unlabeled"
+                                "Số mẫu gán nhãn", "Tập labeled", "Số mẫu unlabeled", "Pseudo Correct"
                             ])
+
+                            # Lưu trữ tổng số mẫu gán nhãn và số nhãn đúng qua các vòng
+                            total_pseudo_labeled = 0
+                            total_pseudo_correct = 0
 
                             # Tạo placeholder để hiển thị bảng và hình ảnh
                             table_placeholder = st.empty()
@@ -724,6 +984,20 @@ def run_PseudoLabeling_app():
                                     X_confident = X_current_unlabeled[confident_mask]
                                     y_confident = pseudo_labels[confident_mask]
 
+                                    # Tính toán số lượng nhãn pseudo đúng (nếu có ground truth)
+                                    pseudo_correct = None
+                                    if y_unlabeled_true is not None and len(X_confident) > 0:
+                                        y_confident_true = y_unlabeled_true[confident_mask]
+                                        pseudo_correct = np.sum(y_confident == y_confident_true)
+                                        st.write(
+                                            f"🔹 Vòng {iteration + 1}: Nhãn Pseudo đúng: {pseudo_correct}/{len(X_confident)} ({pseudo_correct/len(X_confident)*100:.2f}%)"
+                                        )
+                                        # Cập nhật tổng số mẫu gán nhãn và số nhãn đúng
+                                        total_pseudo_labeled += len(X_confident)
+                                        total_pseudo_correct += pseudo_correct
+                                        # Cập nhật tập y_unlabeled_true sau khi loại bỏ các mẫu đã gán
+                                        y_unlabeled_true = y_unlabeled_true[~confident_mask]
+
                                     # Ghi lại các chỉ số thống kê
                                     mlflow.log_metric(f"min_prob_iter_{iteration+1}", np.min(max_probs))
                                     mlflow.log_metric(f"max_prob_iter_{iteration+1}", np.max(max_probs))
@@ -756,7 +1030,8 @@ def run_PseudoLabeling_app():
                                         "Mean Prob": [np.mean(max_probs)],
                                         "Số mẫu gán nhãn": [len(X_confident)],
                                         "Tập labeled": [str(X_current_labeled.shape)],
-                                        "Số mẫu unlabeled": [X_current_unlabeled.shape[0]]
+                                        "Số mẫu unlabeled": [X_current_unlabeled.shape[0]],
+                                        "Pseudo Correct": [pseudo_correct]
                                     })
                                     results_df = pd.concat([results_df, new_row], ignore_index=True)
 
@@ -769,7 +1044,8 @@ def run_PseudoLabeling_app():
                                             "Max Prob": "{:.4f}",
                                             "Mean Prob": "{:.4f}",
                                             "Số mẫu gán nhãn": "{:d}",
-                                            "Số mẫu unlabeled": "{:d}"
+                                            "Số mẫu unlabeled": "{:d}",
+                                            "Pseudo Correct": lambda x: f"{int(x)}" if pd.notnull(x) else "N/A"
                                         }))
 
                                     # Điều kiện dừng
@@ -790,6 +1066,22 @@ def run_PseudoLabeling_app():
 
                             # Lưu mô hình cuối cùng vào MLflow
                             mlflow.keras.log_model(model, "pseudo_labeled_model")
+
+                            # Phần kết luận
+                            st.markdown("### 📝 **Kết luận sau quá trình huấn luyện**")
+                            st.write(f"🔹 **Số vòng lặp đã chạy:** {len(results_df)}/{max_iterations}")
+                            st.write(f"🔹 **Tổng số mẫu unlabeled ban đầu:** {X_unlabeled.shape[0]}")
+                            st.write(f"🔹 **Số mẫu unlabeled còn lại:** {X_current_unlabeled.shape[0]}")
+                            st.write(f"🔹 **Tổng số mẫu được gán nhãn Pseudo-Label:** {X_current_labeled.shape[0] - num_labeled_samples}")
+
+                            # Tính toán và hiển thị tỷ lệ gán nhãn đúng/sai
+                            if y_unlabeled_true is not None and total_pseudo_labeled > 0:
+                                correct_ratio = (total_pseudo_correct / total_pseudo_labeled) * 100
+                                incorrect_ratio = 100 - correct_ratio
+                                st.write(f"🔹 **Tỷ lệ gán nhãn đúng (Pseudo-Labeling):** {total_pseudo_correct}/{total_pseudo_labeled} ({correct_ratio:.2f}%)")
+                                st.write(f"🔹 **Tỷ lệ gán nhãn sai (Pseudo-Labeling):** {total_pseudo_labeled - total_pseudo_correct}/{total_pseudo_labeled} ({incorrect_ratio:.2f}%)")
+                            else:
+                                st.write("🔹 **Tỷ lệ gán nhãn đúng/sai:** Không có ground truth để đánh giá độ chính xác của nhãn Pseudo-Label.")
 
                             # Cập nhật thanh trạng thái hoàn tất
                             progress_bar.progress(100)
