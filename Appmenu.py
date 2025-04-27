@@ -7,6 +7,7 @@ from LinearRegression import run_LinearRegression_app
 from PcaTSNEMinst import run_PcaTSNEMinst_app
 from NeuralNetworkMinst import run_NeuralNetwork_app
 from PseudoLabeling import run_PseudoLabeling_app
+from Deleteimg import run_DeleteBackground_app()
 
 # Cấu hình trang chính - phải được gọi ngay đầu file
 st.set_page_config(page_title="Multi-App", layout="wide")
@@ -15,7 +16,7 @@ st.set_page_config(page_title="Multi-App", layout="wide")
 st.sidebar.title("Home page")
 app_choice = st.sidebar.selectbox(
     "Chọn ứng dụng:",
-    ["Linear Regression", "Classification", "Clustering","PCA_T-SNE","Neural_Network","Pseudo Labelling"]
+    ["Linear Regression", "Classification", "Clustering","PCA_T-SNE","Neural_Network","Pseudo Labelling","Delete"]
 )
 
 # Nội dung chính của trang
@@ -34,3 +35,5 @@ elif app_choice == "Neural_Network":
     run_NeuralNetwork_app()   
 elif app_choice == "Pseudo Labelling":
     run_PseudoLabeling_app()       
+elif app_choice == "Delete":
+    run_DeleteBackground_app()
