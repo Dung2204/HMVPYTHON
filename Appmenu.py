@@ -7,7 +7,7 @@ from LinearRegression import run_LinearRegression_app
 from PcaTSNEMinst import run_PcaTSNEMinst_app
 from NeuralNetworkMinst import run_NeuralNetwork_app
 from PseudoLabeling import run_PseudoLabeling_app
-from Deleteimg import run_DeleteBackground_app()
+from Deleteimg import run_DeleteBackground_app
 
 # Cấu hình trang chính - phải được gọi ngay đầu file
 st.set_page_config(page_title="Multi-App", layout="wide")
