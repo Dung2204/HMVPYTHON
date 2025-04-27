@@ -12,3 +12,5 @@ streamlit-drawable-canvas
 plotly
 networkx
 tensorflow
+rembg
+onnxruntime
